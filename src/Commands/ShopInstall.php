@@ -77,6 +77,11 @@ class ShopInstall extends GP247Command
         // WHY: shop tables are new here, so their text is already stored as typed; without the
         // flag the first gp247:update would decode "&amp;" a user typed on purpose.
         \GP247\Core\Support\StoredTextDecoder::markStoredAsTyped('text_storage_decoded_shop');
+        // WHY last: the four upgrade migrations run above already have their rows; the base
+        // migration and the seeders did what the others do, so the first gp247:update must not
+        // run them again (US-CLI-fresh-install-upgrade-baseline).
+        $recorded = \GP247\Core\Support\UpgradeMigrationBaseline::markApplied(dirname(__DIR__) . '/Admin/Database/Migrations/upgrade');
+        $this->info('---------------> Shop upgrade migrations recorded: ' . count($recorded));
 
         // WHY no vendor:publish here any more (modification 20260913T200309):
         // shop's storefront views are served from this package through the
