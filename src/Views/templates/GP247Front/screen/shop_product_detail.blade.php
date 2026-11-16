@@ -33,6 +33,14 @@
             'availability' => $product->allowSale() ? 'InStock' : 'OutOfStock',
             'imageUrl'     => gp247_file($product->getImage()),
             'description'  => $product->description,
+            // Identifiers + promotion end + id for rating resolvers (US-SEO-005, modification 20261116T050835).
+            'sku'             => $product->sku,
+            'brand'           => $product->brand->name ?? null,
+            'gtin12'          => $product->upc,
+            'gtin13'          => $product->ean ?: $product->jan,
+            'mpn'             => $product->mpn,
+            'priceValidUntil' => $product->promotionValidUntil(),
+            'productId'       => (string) $product->id,
         ];
         $breadcrumbItems = array_map(
             fn ($item) => ['name' => $item['title'], 'url' => $item['url'] ?: null],

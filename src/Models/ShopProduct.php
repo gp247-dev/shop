@@ -655,6 +655,35 @@ class ShopProduct extends Model
     }
 
     /**
+     * End date of the promotion that sets the price a visitor sees right now, for
+     * JSON-LD `offers.priceValidUntil`. Null when no promotion is running, it has no
+     * end date, or an extension priced the product differently.
+     *
+     * WHY reuse processPromotionPrice(): the date must belong to exactly the price
+     * getFinalPrice() shows, under the same conditions, or the structured data would
+     * contradict the page.
+     *
+     * @return string|null Y-m-d.
+     *
+     * @aidlc-unit seo
+     * @aidlc-story US-SEO-005
+     */
+    public function promotionValidUntil(): ?string
+    {
+        $promotionPrice = $this->processPromotionPrice();
+        $dateEnd = $this->promotionPrice['date_end'] ?? null;
+
+        if ($promotionPrice == -1 || empty($dateEnd)) {
+            return null;
+        }
+        if ((float) $this->getFinalPrice() !== (float) $promotionPrice) {
+            return null;
+        }
+
+        return \Illuminate\Support\Carbon::parse($dateEnd)->format('Y-m-d');
+    }
+
+    /**
      * Move stock and sold for a product by an ATOMIC conditional UPDATE.
      *
      * WHY not read-modify-write: the previous version loaded stock into PHP,

@@ -251,8 +251,39 @@ class ShopServiceProvider extends ServiceProvider
             ),
         ]);
 
+        $this->registerSeoIndexingSignals();
+
         $this->registerPaymentRequestPurposes();
 
+    }
+
+    /**
+     * Tell gp247/front which shop pages must stay out of search results: the
+     * visitor's own pages (cart, wishlist/compare, checkout, order, account,
+     * payment link) and the product filter's query parameters (the
+     * `#[Url]` properties of ProductFilter). Front owns the decision and the
+     * tag; the shop only lists its own routes (ADR-seo-indexing-signals).
+     *
+     * A new `#[Url]` filter property must be added to the parameter list here.
+     *
+     * @return void
+     *
+     * @aidlc-unit seo
+     * @aidlc-story US-SEO-robots-meta, US-SEO-002
+     */
+    private function registerSeoIndexingSignals(): void
+    {
+        $append = fn (string $key, array $values) => config([$key => array_values(array_unique(array_merge(
+            (array) config($key, []),
+            $values
+        )))]);
+
+        $append('gp247-config.front.seo_noindex_routes', [
+            'cart', 'cart.*', 'checkout*', 'order.*', 'customer.*', 'payment_request.*',
+        ]);
+        $append('gp247-config.front.seo_noindex_query_params', [
+            'filter_sort', 'price', 'brand', 'keyword',
+        ]);
     }
 
     /**
