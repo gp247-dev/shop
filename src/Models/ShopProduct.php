@@ -637,16 +637,27 @@ class ShopProduct extends Model
         }
     }
 
-    /*
-    Check promotion price
-    */
+    /**
+     * Price of the promotion that applies right now, or -1 when none does: it must be
+     * switched on and inside its date range — the same rule the price sort and the
+     * "on promotion" filter of buildQuery() apply in SQL.
+     *
+     * WHY a strict comparison: this was `status_promotion = 1` — an assignment, always
+     * true — so a promotion the shop had switched off still set the selling price, and
+     * the in-memory row was flipped back to "on" (modification 20261117T062039).
+     *
+     * @return float|int|string Promotion price, or -1.
+     *
+     * @aidlc-unit storefront
+     * @aidlc-story US-LW-order-line-effective-price
+     */
     private function processPromotionPrice()
     {
         $promotion = $this->promotionPrice;
         if ($promotion) {
             if (($promotion['date_end'] >= date("Y-m-d") || $promotion['date_end'] === null)
                 && ($promotion['date_start'] <= date("Y-m-d H:i:s") || $promotion['date_start'] === null)
-                && $promotion['status_promotion'] = 1) {
+                && (int) $promotion['status_promotion'] === 1) {
                 return $promotion['price_promotion'];
             }
         }
