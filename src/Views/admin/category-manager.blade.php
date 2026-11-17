@@ -25,12 +25,13 @@
             @php($tabsMap = [
                 'general' => gp247_language_render('admin.product.tab_general'),
                 'desc'    => gp247_language_render('admin.product.tab_description'),
+                'seo'     => gp247_language_render('admin.seo.panel_title'),
             ])
             {{-- Surface validation errors on hidden tabs --}}
             @php($tabsWithErrors = array_values(array_intersect(
                 array_keys($tabsMap),
                 array_unique(array_map(
-                    static fn ($k) => (str_starts_with($k, 'desc.') || $k === 'form.alias') ? 'desc' : 'general',
+                    static fn ($k) => str_starts_with($k, 'seo.') ? 'seo' : ((str_starts_with($k, 'desc.') || $k === 'form.alias') ? 'desc' : 'general'),
                     $errors->keys()
                 ))
             )))
@@ -112,6 +113,11 @@
                             </div>
                         </div>
                     @endforeach
+                </div>
+
+                {{-- ---- SEO (shared panel of gp247/front, US-SEO-content-meta) ---- --}}
+                <div x-show="tab === 'seo'" x-cloak data-testid="category-form-tab-seo">
+                    @include('gp247-front-admin::partials.seo-panel', ['nameField' => 'desc.{code}.name', 'descriptionField' => 'desc.{code}.description', 'aliasField' => 'form.alias', 'imageType' => 'category'])
                 </div>
 
             </x-gp247::tabs>

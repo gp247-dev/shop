@@ -54,9 +54,10 @@
                 'custom' => gp247_language_render('admin.custom_field.title'),
                 'variants' => ($isSingle && $this->productFieldEnabled('product_attribute')) ? gp247_language_render('admin.product_attribute_group.list') : null,
                 'composition' => ($isBuild || $isGroup) ? gp247_language_render('product.product') : null,
+                'seo' => gp247_language_render('admin.seo.panel_title'),
             ]))
             {{-- WHY: surface validation errors on hidden tabs by mapping each error key to its owning tab. --}}
-            @php($tabsWithErrors = array_values(array_intersect(array_keys($tabsMap), array_unique(array_map(static fn ($k) => $k === 'form.alias' || str_starts_with($k, 'desc.') ? 'desc' : (str_starts_with($k, 'customFields') ? 'custom' : (str_starts_with($k, 'attributes') || str_starts_with($k, 'variants') ? 'variants' : (str_starts_with($k, 'buildItems') || str_starts_with($k, 'groupItems') ? 'composition' : 'general'))), $errors->keys())))))
+            @php($tabsWithErrors = array_values(array_intersect(array_keys($tabsMap), array_unique(array_map(static fn ($k) => str_starts_with($k, 'seo.') ? 'seo' : ($k === 'form.alias' || str_starts_with($k, 'desc.') ? 'desc' : (str_starts_with($k, 'customFields') ? 'custom' : (str_starts_with($k, 'attributes') || str_starts_with($k, 'variants') ? 'variants' : (str_starts_with($k, 'buildItems') || str_starts_with($k, 'groupItems') ? 'composition' : 'general')))), $errors->keys())))))
             <x-gp247::tabs :tabs="$tabsMap" :errors="$tabsWithErrors" default="general">
 
                 {{-- ---- General ---- (field visibility mirrors legacy product_add gating by kind) --}}
@@ -284,6 +285,11 @@
                         <p class="text-sm text-gray-500 dark:text-gray-400">{{ gp247_language_render('admin.no_records') }}</p>
                     @endif
                 </div>
+                {{-- ---- SEO (shared panel of gp247/front, US-SEO-content-meta) ---- --}}
+                <div x-show="tab === 'seo'" x-cloak data-testid="product-form-tab-seo">
+                    @include('gp247-front-admin::partials.seo-panel', ['nameField' => 'desc.{code}.name', 'descriptionField' => 'desc.{code}.description', 'aliasField' => 'form.alias', 'imageType' => 'product'])
+                </div>
+
             </x-gp247::tabs>
 
             <div class="flex items-center justify-end border-t border-gray-200 pt-4 dark:border-gray-700">

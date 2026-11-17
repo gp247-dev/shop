@@ -4,6 +4,7 @@ namespace GP247\Shop\Admin\Livewire;
 
 use GP247\Core\AdminShell\Infrastructure\ResourcePanel;
 use GP247\Core\AdminShell\Infrastructure\HasValidationLabels;
+use GP247\Front\Admin\Livewire\Concerns\HasSeoPanel;
 use GP247\Shop\Models\ShopBrand;
 use GP247\Shop\Services\Catalog\BrandWriter;
 use GP247\Shop\Services\Catalog\WriteContext;
@@ -22,6 +23,7 @@ use GP247\Shop\Services\Catalog\WriteContext;
 class BrandManager extends ResourcePanel
 {
     use HasValidationLabels;
+    use HasSeoPanel;
 
     protected ?string $permission = 'admin_brand';
 
@@ -130,6 +132,17 @@ class BrandManager extends ResourcePanel
     }
 
     /**
+     * Reset to create mode, SEO panel included.
+     *
+     * @return void
+     */
+    public function resetForm(): void
+    {
+        parent::resetForm();
+        $this->fillSeo(null);
+    }
+
+    /**
      * @param ShopBrand $model
      * @return array<string, mixed>
      */
@@ -137,6 +150,7 @@ class BrandManager extends ResourcePanel
     {
         // Store is immutable on edit — expose it for the read-only display.
         $this->formStoreId = (string) $model->store_id;
+        $this->fillSeo($model->id);
 
         return [
             'image' => (string) $model->image,
@@ -155,7 +169,7 @@ class BrandManager extends ResourcePanel
      */
     protected function rules(): array
     {
-        return (new BrandWriter)->rules($this->editingId);
+        return array_merge((new BrandWriter)->rules($this->editingId), $this->seoRules());
     }
 
     /**
@@ -165,7 +179,7 @@ class BrandManager extends ResourcePanel
      */
     protected function attributeLabels(): array
     {
-        return (new BrandWriter)->labelKeys();
+        return (new BrandWriter)->labelKeys() + $this->seoAttributeLabels();
     }
 
     /**
@@ -179,6 +193,28 @@ class BrandManager extends ResourcePanel
      * @aidlc-adr shop-admin_catalog-write-service
      */
     protected function persist(array $data): void
+    {
+        $this->persistWithSeo(fn () => $this->persistContent($data));
+    }
+
+    /**
+     * SEO content-type key of this screen (US-SEO-content-meta).
+     *
+     * @return string
+     */
+    protected function seoType(): string
+    {
+        return 'brand';
+    }
+
+    /**
+     * Save the record itself; the SEO panel is saved right after, in the same
+     * transaction (persistWithSeo, ADR-seo-content-meta-table).
+     *
+     * @param array<string, mixed> $data Sanitised form.
+     * @return void
+     */
+    private function persistContent(array $data): void
     {
         $editing = $this->editingId !== null && $this->editingId !== '';
         // Store is immutable on edit (ADR 1-1): the record's own store, read from the DB.

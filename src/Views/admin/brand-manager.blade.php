@@ -27,6 +27,14 @@
             <x-gp247::input type="number" min="0" :label="gp247_language_render('admin.sort')"
                 name="sort" wire:model="form.sort" :error="$errors->first('form.sort')" required />
             <x-gp247::checkbox :label="gp247_language_render('admin.active')" wire:model="form.status" value="1" />
+            {{-- SEO (shared panel of gp247/front, US-SEO-content-meta) --}}
+            <details class="rounded-lg border border-gray-200 p-3 dark:border-gray-700" data-testid="brand-form-seo" @if($errors->has('seo.*')) open @endif>
+                <summary class="cursor-pointer text-sm font-semibold text-gray-700 dark:text-gray-200">{{ gp247_language_render('admin.seo.panel_title') }}</summary>
+                <div class="mt-3">
+                    @include('gp247-front-admin::partials.seo-panel', ['nameField' => 'form.name', 'descriptionField' => null, 'aliasField' => 'form.alias', 'imageType' => 'brand'])
+                </div>
+            </details>
+
             <div class="flex items-center justify-end border-t border-gray-200 pt-4 dark:border-gray-700">
                 <x-gp247::button type="submit" wire:loading.attr="disabled">
                     <i class="fas fa-save"></i> {{ gp247_language_render($editingId ? 'admin.update' : 'admin.submit') }}

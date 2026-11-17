@@ -6,6 +6,7 @@ use GP247\Core\AdminShell\Infrastructure\HasCustomFields;
 use GP247\Core\AdminShell\Infrastructure\HasMultilingualDescriptions;
 use GP247\Core\AdminShell\Infrastructure\ResourcePanel;
 use GP247\Core\Models\AdminLanguage;
+use GP247\Front\Admin\Livewire\Concerns\HasSeoPanel;
 use GP247\Shop\Admin\Livewire\Concerns\HasProductComposition;
 use GP247\Shop\Admin\Livewire\Concerns\HasProductImages;
 use GP247\Shop\Admin\Livewire\Concerns\HasProductPricing;
@@ -47,6 +48,7 @@ class ProductManager extends ResourcePanel
     use HasProductComposition;
     use HasProductPricing;
     use HasProductTags;
+    use HasSeoPanel;
 
     protected ?string $permission = 'admin_product';
 
@@ -262,6 +264,7 @@ class ProductManager extends ResourcePanel
         $this->resetGallery();
         $this->resetVariants();
         $this->resetComposition();
+        $this->fillSeo(null);
     }
 
     /**
@@ -275,6 +278,7 @@ class ProductManager extends ResourcePanel
         $this->fillGallery($model);
         $this->fillVariants($model);
         $this->fillComposition($model);
+        $this->fillSeo($model->id);
 
         // Store is immutable on edit — expose it for the read-only display + to scope
         // related option lists (category/brand/tax) to the record's own store.
@@ -310,7 +314,7 @@ class ProductManager extends ResourcePanel
     {
         $rules = $this->writer()->rules($this->writeContext(), $this->editingId, $this->writeOptions());
 
-        return array_merge($rules, $this->customFieldRules(), $this->compositionRules());
+        return array_merge($rules, $this->customFieldRules(), $this->compositionRules(), $this->seoRules());
     }
 
     /**
@@ -321,7 +325,7 @@ class ProductManager extends ResourcePanel
      */
     public function validationAttributes(): array
     {
-        return $this->writer()->attributeLabels();
+        return $this->writer()->attributeLabels() + $this->seoValidationAttributes();
     }
 
     /**
@@ -364,6 +368,28 @@ class ProductManager extends ResourcePanel
      * @aidlc-adr shop-admin_catalog-write-service
      */
     protected function persist(array $data): void
+    {
+        $this->persistWithSeo(fn () => $this->persistContent($data));
+    }
+
+    /**
+     * SEO content-type key of this screen (US-SEO-content-meta).
+     *
+     * @return string
+     */
+    protected function seoType(): string
+    {
+        return 'product';
+    }
+
+    /**
+     * Save the record itself; the SEO panel is saved right after, in the same
+     * transaction (persistWithSeo, ADR-seo-content-meta-table).
+     *
+     * @param array<string, mixed> $data Sanitised form.
+     * @return void
+     */
+    private function persistContent(array $data): void
     {
         $product = $this->writer()->save($this->writeContext(), [
             'form' => $data,

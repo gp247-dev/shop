@@ -50,6 +50,8 @@ class ShopBrand extends Model
         parent::boot();
         // before delete() method call this
         static::deleting(function ($brand) {
+            // Own SEO values go with the content (US-SEO-content-meta).
+            \GP247\Front\Library\SeoContentMeta::forget('brand', $brand->id);
 
             //Delete custom field
             (new \GP247\Core\Models\AdminCustomFieldDetail)

@@ -404,6 +404,8 @@ class ShopProduct extends Model
         // before delete() method call this
         static::deleting(
             function ($product) {
+                // Own SEO values go with the content (US-SEO-content-meta).
+                \GP247\Front\Library\SeoContentMeta::forget('product', $product->id);
                 $product->images()->delete();
                 $product->descriptions()->delete();
                 $product->promotionPrice()->delete();

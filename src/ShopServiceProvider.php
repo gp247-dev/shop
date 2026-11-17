@@ -269,7 +269,7 @@ class ShopServiceProvider extends ServiceProvider
      * @return void
      *
      * @aidlc-unit seo
-     * @aidlc-story US-SEO-robots-meta, US-SEO-002
+     * @aidlc-story US-SEO-robots-meta, US-SEO-002, US-SEO-content-type-registry
      */
     private function registerSeoIndexingSignals(): void
     {
@@ -284,6 +284,15 @@ class ShopServiceProvider extends ServiceProvider
         $append('gp247-config.front.seo_noindex_query_params', [
             'filter_sort', 'price', 'brand', 'keyword',
         ]);
+        // Content with its own SEO values (US-SEO-content-type-registry, ADR-seo-content-meta-table).
+        config(['gp247-config.front.seo_content_types' => array_merge(
+            (array) config('gp247-config.front.seo_content_types', []),
+            [
+                'product' => ['label' => 'admin.seo.type_product'],
+                'category' => ['label' => 'admin.seo.type_category'],
+                'brand' => ['label' => 'admin.seo.type_brand'],
+            ]
+        )]);
     }
 
     /**

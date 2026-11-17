@@ -85,6 +85,8 @@ class ShopBrandController extends RootFrontController
     {
         $brand = (new ShopBrand)->getDetail($alias, $type = 'alias');
         if ($brand) {
+            // Lets MetaHead read the content's own SEO values (US-SEO-content-meta).
+            \GP247\Front\Library\SeoContentMeta::subject('brand', $brand->id);
             $productController = gp247_namespace(ShopProductController::class);
             $dataSearch = (new $productController)->processFilter(['sort', 'price']);
             

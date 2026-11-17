@@ -5,6 +5,7 @@ namespace GP247\Shop\Admin\Livewire;
 use GP247\Core\AdminShell\Infrastructure\HasMultilingualDescriptions;
 use GP247\Core\AdminShell\Infrastructure\ResourcePanel;
 use GP247\Core\Models\AdminLanguage;
+use GP247\Front\Admin\Livewire\Concerns\HasSeoPanel;
 use GP247\Core\AdminShell\Infrastructure\HasValidationLabels;
 use GP247\Shop\Admin\Models\AdminCategory;
 use GP247\Shop\Models\ShopCategory;
@@ -34,6 +35,7 @@ class CategoryManager extends ResourcePanel
 {
     use HasMultilingualDescriptions;
     use HasValidationLabels;
+    use HasSeoPanel;
 
     protected ?string $permission = 'admin_category';
 
@@ -185,6 +187,7 @@ class CategoryManager extends ResourcePanel
     {
         parent::resetForm();
         $this->initDescriptions();
+        $this->fillSeo(null);
     }
 
     /**
@@ -194,6 +197,7 @@ class CategoryManager extends ResourcePanel
     protected function fillForm($model): array
     {
         $this->fillDescriptions($model->descriptions);
+        $this->fillSeo($model->id);
 
         // Store is immutable on edit — expose it for the read-only display + to scope
         // related option lists to the record's own store.
@@ -216,7 +220,7 @@ class CategoryManager extends ResourcePanel
      */
     protected function rules(): array
     {
-        return (new CategoryWriter)->rules($this->editingId);
+        return array_merge((new CategoryWriter)->rules($this->editingId), $this->seoRules());
     }
 
     /**
@@ -227,7 +231,7 @@ class CategoryManager extends ResourcePanel
      */
     protected function attributeLabels(): array
     {
-        return (new CategoryWriter)->labelKeys();
+        return (new CategoryWriter)->labelKeys() + $this->seoAttributeLabels();
     }
 
     /**
@@ -259,6 +263,28 @@ class CategoryManager extends ResourcePanel
      * @aidlc-adr shop-admin_catalog-write-service
      */
     protected function persist(array $data): void
+    {
+        $this->persistWithSeo(fn () => $this->persistContent($data));
+    }
+
+    /**
+     * SEO content-type key of this screen (US-SEO-content-meta).
+     *
+     * @return string
+     */
+    protected function seoType(): string
+    {
+        return 'category';
+    }
+
+    /**
+     * Save the record itself; the SEO panel is saved right after, in the same
+     * transaction (persistWithSeo, ADR-seo-content-meta-table).
+     *
+     * @param array<string, mixed> $data Sanitised form.
+     * @return void
+     */
+    private function persistContent(array $data): void
     {
         $editing = $this->editingId !== null && $this->editingId !== '';
         // Store is immutable on edit (ADR 1-1): the record's own store, read from the DB.
