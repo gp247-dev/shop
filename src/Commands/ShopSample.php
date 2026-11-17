@@ -3,9 +3,8 @@
 namespace GP247\Shop\Commands;
 
 use GP247\Core\Console\GP247Command;
-use Throwable;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
+use GP247\Shop\Commands\Sample\ShopSampleCatalog;
 use GP247\Shop\Models\ShopCategory;
 use GP247\Shop\Models\ShopCategoryDescription;
 use GP247\Shop\Models\ShopProduct;
@@ -18,8 +17,8 @@ use Carbon\Carbon;
 
 /**
  * Create demo catalog data (categories, brands, suppliers, single/bundle/group
- * products, sample promotions). Truncates existing shop tables first — dev/demo
- * only, never on a live site.
+ * products, sample promotions) for an electronics store. Truncates existing shop
+ * tables first — dev/demo only, never on a live site.
  *
  * @aidlc-unit system-cli
  * @aidlc-story US-CLI-005
@@ -47,34 +46,28 @@ class ShopSample extends GP247Command
     private const PRODUCT_IMAGE_BASE = 'https://static.gp247.net/file/s-cart/product/product-';
 
     /**
-     * Number of hosted sample product photos.
-     */
-    private const PRODUCT_IMAGE_COUNT = 36;
-
-    /**
-     * Position of the next photo handed out by nextProductImage().
-     *
-     * @var int
-     */
-    private int $productImageCursor = 0;
-
-    /**
      * Base URL of the hosted sample photos for categories, brands and suppliers:
      * each kind has its own set, <base><kind>/<kind>-1.png … <kind>-N.png.
      */
     private const CATALOG_IMAGE_BASE = 'https://static.gp247.net/file/s-cart/';
 
     /**
-     * Number of hosted sample photos in each catalog set (cate, brand, supplier).
+     * Placeholder body shared by every sample product, per language.
      */
-    private const CATALOG_IMAGE_COUNT = 10;
+    private const SAMPLE_CONTENT = [
+        'vi' => '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. <br>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. <br>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>',
+        'en' => '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. <br>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. <br>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>',
+        'ja' => '<p>こちらはサンプル商品の説明用のダミーテキストです。実際の商品情報に合わせて内容を編集してください。素材、サイズ、使い方などの詳細をここに記載できます。<br>品質にこだわった商品を、お求めやすい価格でお届けします。ご不明な点がございましたら、お気軽にお問い合わせください。</p><p>こちらはサンプル商品の説明用のダミーテキストです。実際の商品情報に合わせて内容を編集してください。素材、サイズ、使い方などの詳細をここに記載できます。<br>品質にこだわった商品を、お求めやすい価格でお届けします。ご不明な点がございましたら、お気軽にお問い合わせください。</p>',
+    ];
 
     /**
-     * Position of the next photo handed out by nextCatalogImage(), per kind.
-     *
-     * @var array<string, int>
+     * Short description of a sample product, per language; ":name" is the product name.
      */
-    private array $catalogImageCursor = [];
+    private const SAMPLE_SHORT_DESCRIPTION = [
+        'vi' => ':name — sản phẩm mẫu, hãy sửa nội dung cho phù hợp với cửa hàng của bạn.',
+        'en' => ':name — sample product, edit this text to fit your store.',
+        'ja' => ':name — サンプル商品です。お店に合わせて内容を編集してください。',
+    ];
 
     /**
      * Execute the console command.
@@ -128,915 +121,398 @@ class ShopSample extends GP247Command
      */
     private function seed(): void
     {
-            $this->productImageCursor = 0;
-            $this->catalogImageCursor = [];
+        $this->info('Creating sample categories...');
+        $leafCategories = $this->createCategories();
 
-            // Create sample categories
-            $this->info('Creating sample categories...');
-            $cateRoot1 = gp247_generate_id();
-            $cateRoot2 = gp247_generate_id();
-            $cateRoot3 = gp247_generate_id();
-            $cateRoot4 = gp247_generate_id();
-            $categories = [
-                [
-                    'id' => $cateRoot1,
-                    'alias' => 'am-thuc',
-                    'image' => $this->nextCatalogImage('cate'),
-                    'parent' => '',
-                    'top' => 1,
-                    'sort' => 0,
-                    'status' => 1,
-                    'descriptions' => [
-                        'vi' => [
-                            'name' => 'Ẩm thực',
-                            'keyword' => 'am thuc, mon ngon',
-                            'description' => 'Danh mục các món ăn ngon'
-                        ],
-                        'en' => [
-                            'name' => 'Food',
-                            'keyword' => 'food, cuisine',
-                            'description' => 'Food and cuisine category'
-                        ],
-                        'ja' => [
-                            'name' => 'グルメ',
-                            'keyword' => 'グルメ, 料理',
-                            'description' => 'グルメ・料理のカテゴリー'
-                        ]
-                    ]
-                ],
-                // Create subcategories for "Ẩm thực" (Food)
-                [
-                    'id' => gp247_generate_id(),
-                    'alias' => 'pho-nam-dinh',
-                    'image' => $this->nextCatalogImage('cate'),
-                    'parent' => $cateRoot1,
-                    'top' => 0,
-                    'sort' => 1,
-                    'status' => 1,
-                    'descriptions' => [
-                        'vi' => [
-                            'name' => 'Phở Nam Định',
-                            'keyword' => 'pho nam dinh, am thuc',
-                            'description' => 'Danh mục các sản phẩm Phở Nam Định'
-                        ],
-                        'en' => [
-                            'name' => 'Pho Nam Dinh',
-                            'keyword' => 'pho nam dinh, food',
-                            'description' => 'Category of Pho Nam Dinh products'
-                        ],
-                        'ja' => [
-                            'name' => 'ナムディン・フォー',
-                            'keyword' => 'ナムディン, フォー, グルメ',
-                            'description' => 'ナムディン・フォーの商品カテゴリー'
-                        ]
-                    ]
-                ],
-                [
-                    'id' => gp247_generate_id(),
-                    'alias' => 'nem-chua-thanh-hoa',
-                    'image' => $this->nextCatalogImage('cate'),
-                    'parent' => $cateRoot1,
-                    'top' => 0,
-                    'sort' => 2,
-                    'status' => 1,
-                    'descriptions' => [
-                        'vi' => [
-                            'name' => 'Nem chua Thanh Hóa',
-                            'keyword' => 'nem chua thanh hoa, am thuc',
-                            'description' => 'Danh mục các sản phẩm Nem chua Thanh Hóa'
-                        ],
-                        'en' => [
-                            'name' => 'Nem Chua Thanh Hoa',
-                            'keyword' => 'nem chua thanh hoa, food',
-                            'description' => 'Category of Nem Chua Thanh Hoa products'
-                        ],
-                        'ja' => [
-                            'name' => 'タインホア・ネムチュア',
-                            'keyword' => 'タインホア, ネムチュア, グルメ',
-                            'description' => 'タインホア・ネムチュアの商品カテゴリー'
-                        ]
-                    ]
-                ],
-                [
-                    'id' => gp247_generate_id(),
-                    'alias' => 'bun-cha-ha-noi',
-                    'image' => $this->nextCatalogImage('cate'),
-                    'parent' => $cateRoot1,
-                    'top' => 0,
-                    'sort' => 3,
-                    'status' => 1,
-                    'descriptions' => [
-                        'vi' => [
-                            'name' => 'Bún Chả Hà Nội',
-                            'keyword' => 'bun cha ha noi, am thuc',
-                            'description' => 'Danh mục các sản phẩm Bún Chả Hà Nội'
-                        ],
-                        'en' => [
-                            'name' => 'Bun Cha Ha Noi',
-                            'keyword' => 'bun cha ha noi, food',
-                            'description' => 'Category of Bun Cha Ha Noi products'
-                        ],
-                        'ja' => [
-                            'name' => 'ハノイ・ブンチャー',
-                            'keyword' => 'ハノイ, ブンチャー, グルメ',
-                            'description' => 'ハノイ・ブンチャーの商品カテゴリー'
-                        ]
-                    ]
-                ],
-                [
-                    'id' => $cateRoot2,
-                    'alias' => 'du-lich',
-                    'image' => $this->nextCatalogImage('cate'),
-                    'parent' => '',
-                    'top' => 1,
-                    'sort' => 0,
-                    'status' => 1,
-                    'descriptions' => [
-                        'vi' => [
-                            'name' => 'Du lịch',
-                            'keyword' => 'du lich, dia diem',
-                            'description' => 'Danh mục các địa điểm du lịch'
-                        ],
-                        'en' => [
-                            'name' => 'Travel',
-                            'keyword' => 'travel, destinations',
-                            'description' => 'Travel and destinations category'
-                        ],
-                        'ja' => [
-                            'name' => '旅行',
-                            'keyword' => '旅行, 観光地',
-                            'description' => '旅行・観光地のカテゴリー'
-                        ]
-                    ]
-                ],
-                [
-                    'id' => gp247_generate_id(),
-                    'alias' => 'vinh-ha-long',
-                    'image' => $this->nextCatalogImage('cate'),
-                    'parent' => $cateRoot2,
-                    'top' => 0,
-                    'sort' => 1,
-                    'status' => 1,
-                    'descriptions' => [
-                        'vi' => [
-                            'name' => 'Vịnh Hạ Long',
-                            'keyword' => 'vinh ha long, du lich',
-                            'description' => 'Danh mục các sản phẩm, dịch vụ tại Vịnh Hạ Long'
-                        ],
-                        'en' => [
-                            'name' => 'Ha Long Bay',
-                            'keyword' => 'ha long bay, travel',
-                            'description' => 'Category of products and services at Ha Long Bay'
-                        ],
-                        'ja' => [
-                            'name' => 'ハロン湾',
-                            'keyword' => 'ハロン湾, 旅行',
-                            'description' => 'ハロン湾の商品・サービスのカテゴリー'
-                        ]
-                    ]
-                ],
-                [
-                    'id' => gp247_generate_id(),
-                    'alias' => 'dong-phong-nha',
-                    'image' => $this->nextCatalogImage('cate'),
-                    'parent' => $cateRoot2,
-                    'top' => 0,
-                    'sort' => 2,
-                    'status' => 1,
-                    'descriptions' => [
-                        'vi' => [
-                            'name' => 'Động Phong Nha',
-                            'keyword' => 'dong phong nha, du lich',
-                            'description' => 'Danh mục các sản phẩm, dịch vụ tại Động Phong Nha'
-                        ],
-                        'en' => [
-                            'name' => 'Phong Nha Cave',
-                            'keyword' => 'phong nha cave, travel',
-                            'description' => 'Category of products and services at Phong Nha Cave'
-                        ],
-                        'ja' => [
-                            'name' => 'フォンニャ洞窟',
-                            'keyword' => 'フォンニャ洞窟, 旅行',
-                            'description' => 'フォンニャ洞窟の商品・サービスのカテゴリー'
-                        ]
-                    ]
-                ],
-                [
-                    'id' => gp247_generate_id(),
-                    'alias' => 'trang-an',
-                    'image' => $this->nextCatalogImage('cate'),
-                    'parent' => $cateRoot2,
-                    'top' => 0,
-                    'sort' => 3,
-                    'status' => 1,
-                    'descriptions' => [
-                        'vi' => [
-                            'name' => 'Tràng An',
-                            'keyword' => 'trang an, du lich',
-                            'description' => 'Danh mục các sản phẩm, dịch vụ tại Tràng An'
-                        ],
-                        'en' => [
-                            'name' => 'Trang An',
-                            'keyword' => 'trang an, travel',
-                            'description' => 'Category of products and services at Trang An'
-                        ],
-                        'ja' => [
-                            'name' => 'チャンアン',
-                            'keyword' => 'チャンアン, 旅行',
-                            'description' => 'チャンアンの商品・サービスのカテゴリー'
-                        ]
-                    ]
-                ],
-                [
-                    'id' => $cateRoot3,
-                    'alias' => 'van-hoa',
-                    'image' => $this->nextCatalogImage('cate'),
-                    'parent' => '',
-                    'top' => 1,
-                    'sort' => 0,
-                    'status' => 1,
-                    'descriptions' => [
-                        'vi' => [
-                            'name' => 'Văn hóa',
-                            'keyword' => 'van hoa, van nghe',
-                            'description' => 'Danh mục các sản phẩm văn hóa'
-                        ],
-                        'en' => [
-                            'name' => 'Culture',
-                            'keyword' => 'culture, art',
-                            'description' => 'Culture and art category'
-                        ],
-                        'ja' => [
-                            'name' => '文化',
-                            'keyword' => '文化, アート',
-                            'description' => '文化・アートのカテゴリー'
-                        ]
-                    ]
-                ],
-                [
-                    'id' => gp247_generate_id(),
-                    'alias' => 'gom-bat-trang',
-                    'image' => $this->nextCatalogImage('cate'),
-                    'parent' => $cateRoot3,
-                    'top' => 0,
-                    'sort' => 1,
-                    'status' => 1,
-                    'descriptions' => [
-                        'vi' => [
-                            'name' => 'Gốm Bát Tràng',
-                            'keyword' => 'gom bat trang, gom su',
-                            'description' => 'Danh mục các sản phẩm gốm Bát Tràng'
-                        ],
-                        'en' => [
-                            'name' => 'Bat Trang Pottery',
-                            'keyword' => 'bat trang pottery, ceramics',
-                            'description' => 'Category of Bat Trang pottery products'
-                        ],
-                        'ja' => [
-                            'name' => 'バッチャン焼',
-                            'keyword' => 'バッチャン焼, 陶磁器',
-                            'description' => 'バッチャン焼の商品カテゴリー'
-                        ]
-                    ]
-                ],
-                [
-                    'id' => gp247_generate_id(),
-                    'alias' => 'tranh-dong-ho',
-                    'image' => $this->nextCatalogImage('cate'),
-                    'parent' => $cateRoot3,
-                    'top' => 0,
-                    'sort' => 2,
-                    'status' => 1,
-                    'descriptions' => [
-                        'vi' => [
-                            'name' => 'Tranh Đông Hồ',
-                            'keyword' => 'tranh dong ho, tranh dan gian',
-                            'description' => 'Danh mục các sản phẩm tranh Đông Hồ'
-                        ],
-                        'en' => [
-                            'name' => 'Dong Ho Paintings',
-                            'keyword' => 'dong ho paintings, folk paintings',
-                            'description' => 'Category of Dong Ho folk paintings'
-                        ],
-                        'ja' => [
-                            'name' => 'ドンホー版画',
-                            'keyword' => 'ドンホー版画, 民画',
-                            'description' => 'ドンホー民画のカテゴリー'
-                        ]
-                    ]
-                ],
-                [
-                    'id' => gp247_generate_id(),
-                    'alias' => 'chieu-coi-nga-son',
-                    'image' => $this->nextCatalogImage('cate'),
-                    'parent' => $cateRoot3,
-                    'top' => 0,
-                    'sort' => 3,
-                    'status' => 1,
-                    'descriptions' => [
-                        'vi' => [
-                            'name' => 'Chiếu cói Nga Sơn',
-                            'keyword' => 'chieu coi nga son, chieu coi',
-                            'description' => 'Danh mục các sản phẩm chiếu cói Nga Sơn'
-                        ],
-                        'en' => [
-                            'name' => 'Nga Son Rush Mats',
-                            'keyword' => 'nga son rush mats, rush mats',
-                            'description' => 'Category of Nga Son rush mat products'
-                        ],
-                        'ja' => [
-                            'name' => 'ガーソンのい草ゴザ',
-                            'keyword' => 'ガーソン, い草ゴザ, ゴザ',
-                            'description' => 'ガーソン産い草ゴザの商品カテゴリー'
-                        ]
-                    ]
-                ],
-                [
-                    'id' => $cateRoot4,
-                    'alias' => 'trai-cay',
-                    'image' => $this->nextCatalogImage('cate'),
-                    'parent' => '', 
-                    'top' => 1,
-                    'sort' => 0,
-                    'status' => 1,
-                    'descriptions' => [
-                        'vi' => [
-                            'name' => 'Trái cây',
-                            'keyword' => 'trai cay, hoa qua',
-                            'description' => 'Danh mục các loại trái cây'
-                        ],
-                        'en' => [
-                            'name' => 'Fruits',
-                            'keyword' => 'fruits, fresh fruits',
-                            'description' => 'Fresh fruits category'
-                        ],
-                        'ja' => [
-                            'name' => 'フルーツ',
-                            'keyword' => 'フルーツ, 新鮮な果物',
-                            'description' => '新鮮なフルーツのカテゴリー'
-                        ]
-                    ]
-                ],
-                [
-                    'id' => gp247_generate_id(),
-                    'alias' => 'trai-cay-nam-bo',
-                    'image' => $this->nextCatalogImage('cate'),
-                    'parent' => $cateRoot4,
-                    'top' => 0,
-                    'sort' => 1,
-                    'status' => 1,
-                    'descriptions' => [
-                        'vi' => [
-                            'name' => 'Trái Cây Nam Bộ',
-                            'keyword' => 'trai cay nam bo, hoa qua nam bo',
-                            'description' => 'Danh mục các loại trái cây đặc sản Nam Bộ'
-                        ],
-                        'en' => [
-                            'name' => 'Southern Fruits',
-                            'keyword' => 'southern fruits, vietnamese fruits',
-                            'description' => 'Category of Southern Vietnam specialty fruits'
-                        ],
-                        'ja' => [
-                            'name' => '南部のフルーツ',
-                            'keyword' => '南部フルーツ, ベトナムの果物',
-                            'description' => 'ベトナム南部の特産フルーツのカテゴリー'
-                        ]
-                    ]
-                ],
-                [
-                    'id' => gp247_generate_id(),
-                    'alias' => 'vai-thieu',
-                    'image' => $this->nextCatalogImage('cate'),
-                    'parent' => $cateRoot4,
-                    'top' => 0,
-                    'sort' => 2,
-                    'status' => 1,
-                    'descriptions' => [
-                        'vi' => [
-                            'name' => 'Vải Thiều',
-                            'keyword' => 'vai thieu, vai thieu bac giang',
-                            'description' => 'Danh mục các sản phẩm vải thiều'
-                        ],
-                        'en' => [
-                            'name' => 'Lychee',
-                            'keyword' => 'lychee, bac giang lychee',
-                            'description' => 'Category of lychee products'
-                        ],
-                        'ja' => [
-                            'name' => 'ライチ',
-                            'keyword' => 'ライチ, バクザン産ライチ',
-                            'description' => 'ライチの商品カテゴリー'
-                        ]
-                    ]
-                ],
-                [
-                    'id' => gp247_generate_id(),
-                    'alias' => 'nhan-long',
-                    'image' => $this->nextCatalogImage('cate'),
-                    'parent' => $cateRoot4,
-                    'top' => 0,
-                    'sort' => 3,
-                    'status' => 1,
-                    'descriptions' => [
-                        'vi' => [
-                            'name' => 'Nhãn Lồng',
-                            'keyword' => 'nhan long, nhan long hung yen',
-                            'description' => 'Danh mục các sản phẩm nhãn lồng Hưng Yên'
-                        ],
-                        'en' => [
-                            'name' => 'Longan',
-                            'keyword' => 'longan, hung yen longan',
-                            'description' => 'Category of Hung Yen longan products'
-                        ],
-                        'ja' => [
-                            'name' => 'ロンガン',
-                            'keyword' => 'ロンガン, フンイエン産ロンガン',
-                            'description' => 'フンイエン産ロンガンの商品カテゴリー'
-                        ]
-                    ]
-                ]
-            ];
+        $this->info('Creating sample brands...');
+        $brandIds = $this->createBrands();
 
-            $categoryIds = [];
+        $this->info('Creating sample suppliers...');
+        $this->createSuppliers();
 
-            foreach ($categories as $category) {
-                // Create category
-                $categoryData = collect($category)->except('descriptions')->toArray();
-                // WHY: 1-1 ownership — the category owns its store via store_id column.
-                $categoryData['store_id'] = GP247_STORE_ID_ROOT;
-                $cat = ShopCategory::create($categoryData);
-                if ($category['parent'] != '0') {
-                    $categoryIds[] = $cat->id;
-                }
-                // Create descriptions
-                foreach ($category['descriptions'] as $lang => $description) {
-                    ShopCategoryDescription::create([
-                        'category_id' => $cat->id,
-                        'lang' => $lang,
-                        'name' => $description['name'],
-                        'keyword' => $description['keyword'],
-                        'description' => $description['description']
-                    ]);
-                }
+        DB::connection(GP247_DB_CONNECTION)->table(GP247_DB_PREFIX.'shop_attribute_group')->insert([
+            'name' => 'Color',
+            'status' => 1,
+            'sort' => 0,
+            'type' => 'radio',
+            'created_at' => Carbon::now()->format('Y-m-d H:i:s'),
+            'updated_at' => Carbon::now()->format('Y-m-d H:i:s'),
+        ]);
 
-                // Store ownership is set on the category row (store_id) above.
-            }
+        $this->info('Creating sample products...');
+        $singleImages = $this->createSingleProducts($leafCategories, $brandIds);
 
-            // Create sample brands
-            $this->info('Creating sample brands...');
-            $brands = [
-                [
-                    'id' => gp247_generate_id(),
-                    'name' => 'Nike',
-                    'alias' => 'nike',
-                    'image' => $this->nextCatalogImage('brand'),
-                    'url' => 'https://nike.com',
-                    'status' => 1,
-                    'sort' => 0
-                ],
-                [
-                    'id' => gp247_generate_id(),
-                    'name' => 'Adidas',
-                    'alias' => 'adidas',
-                    'image' => $this->nextCatalogImage('brand'),
-                    'url' => 'https://adidas.com',
-                    'status' => 1,
-                    'sort' => 0
-                ],
-                [
-                    'id' => gp247_generate_id(),
-                    'name' => 'Puma',
-                    'alias' => 'puma',
-                    'image' => $this->nextCatalogImage('brand'),
-                    'url' => 'https://puma.com',
-                    'status' => 1,
-                    'sort' => 0
-                ]
-            ];
+        $categoryIds = array_column($leafCategories, 'id');
+        $this->createProductBundle($singleImages, $categoryIds);
+        $this->createProductGroup($singleImages, $categoryIds);
 
-            foreach ($brands as $brand) {
-                // Create brand
-                DB::connection(GP247_DB_CONNECTION)->table(GP247_DB_PREFIX.'shop_brand')->insert($brand);
-            }
-
-            // Create sample suppliers
-            $this->info('Creating sample suppliers...');
-            $suppliers = [
-                [
-                    'id' => gp247_generate_id(),
-                    'name' => 'ABC Corp',
-                    'alias' => 'abc-corp',
-                    'email' => 'contact@abc.com',
-                    'phone' => '0123456789',
-                    'image' => $this->nextCatalogImage('supplier'),
-                    'address' => '123 ABC Street',
-                    'url' => 'https://abc.com',
-                    'status' => 1,
-                    'store_id' => GP247_STORE_ID_ROOT,
-                    'sort' => 0
-                ],
-                [
-                    'id' => gp247_generate_id(),
-                    'name' => 'XYZ Inc',
-                    'alias' => 'xyz-inc',
-                    'email' => 'contact@xyz.com',
-                    'phone' => '0987654321',
-                    'image' => $this->nextCatalogImage('supplier'),
-                    'address' => '456 XYZ Street',
-                    'url' => 'https://xyz.com',
-                    'status' => 1,
-                    'store_id' => GP247_STORE_ID_ROOT,
-                    'sort' => 0
-                ],
-                [
-                    'id' => gp247_generate_id(),
-                    'name' => 'DEF Ltd',
-                    'alias' => 'def-ltd',
-                    'email' => 'contact@def.com',
-                    'phone' => '0369852147',
-                    'image' => $this->nextCatalogImage('supplier'),
-                    'address' => '789 DEF Street',
-                    'url' => 'https://def.com',
-                    'status' => 1,
-                    'store_id' => GP247_STORE_ID_ROOT,
-                    'sort' => 0
-                ]
-            ];
-
-            foreach ($suppliers as $supplier) {
-                DB::connection(GP247_DB_CONNECTION)->table(GP247_DB_PREFIX.'shop_supplier')->insert($supplier);
-            }
-
-            DB::connection(GP247_DB_CONNECTION)->table(GP247_DB_PREFIX.'shop_attribute_group')->insert([
-                'name' => 'Color',
-                'status' => 1,
-                'sort' => 0,
-                'type' => 'radio',
-                'created_at' => Carbon::now()->format('Y-m-d H:i:s'),
-                'updated_at' => Carbon::now()->format('Y-m-d H:i:s'),
-            ]);
-
-            // Create sample products for each category
-            $this->info('Creating sample products...');
-            
-            $arrProductSingleIds = [];
-            foreach ($categoryIds as $categoryKey => $categoryId) {
-                // Create 3 products per category
-                for ($i = 1; $i <= 3; $i++) {
-                    $hasPromotion = ($i <= 2) ? true : false; // First 2 products have promotion
-                    $arrProductSingleIds[] = $productId = gp247_generate_id();
-                    $productNumber = $categoryKey * 3 + $i;
-                    
-                    // Randomly assign brand_id as null or one of the $brands ids
-                    $brandIds = array_column($brands, 'id');
-                    $randomBrand = rand(0, count($brandIds)); // Có thể là null (nếu bằng count)
-                    if ($randomBrand === count($brandIds)) {
-                        $brandId = null;
-                    } else {
-                        $brandId = $brandIds[$randomBrand];
-                    }
-                    // Basic product data
-                    $productData = [
-                        'id' => $productId,
-                        // WHY: 1-1 ownership — product owns its store via store_id column.
-                        'store_id' => GP247_STORE_ID_ROOT,
-                        'sku' => 'SAMPLE-' . $categoryKey . '-' . $i,
-                        'alias' => 'sample-product-' . $productNumber,
-                        'image' => $this->nextProductImage(),
-                        'brand_id' => $brandId,
-                        'supplier_id' => null,
-                        'price' => rand(100, 500), // Random price between 100 and 500
-                        'cost' => 0,
-                        'stock' => 100,
-                        'sold' => 0,
-                        'minimum' => 1,
-                        'weight_class' => 'kg',
-                        'weight' => 1,
-                        'length_class' => 'cm',
-                        'length' => 10,
-                        'width' => 10,
-                        'height' => 10,
-                        'kind' => 0, // Single product
-                        'product_type' => 0, // Physical product
-                        'tax_id' => 0,
-                        'status' => 1,
-                        'sort' => 0,
-                        'view' => 0,
-                        'date_available' => Carbon::now()->format('Y-m-d H:i:s'),
-                        'created_at' => Carbon::now()->format('Y-m-d 00:00:00'),
-                        'updated_at' => Carbon::now()->format('Y-m-d 00:00:00'),
-                    ];
-
-                    // Product descriptions
-                    $productDescriptions = [
-                        'vi' => [
-                            'product_id' => $productId,
-                            'lang' => 'vi',
-                            'name' => 'Sản phẩm mẫu ' . $productNumber . ' - Tiếng Việt',
-                            'keyword' => 'sample, product',
-                            'description' => 'Mô tả ngắn cho sản phẩm mẫu ' . $productNumber,
-                            'content' => '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. <br>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. <br>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>'
-                        ],
-                        'en' => [
-                            'product_id' => $productId,
-                            'lang' => 'en',
-                            'name' => 'Sample product ' . $productNumber . ' - English',
-                            'keyword' => 'sample, product',
-                            'description' => 'Short description for sample product ' . $productNumber,
-                            'content' => '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. <br>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. <br>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>'
-                        ],
-                        'ja' => [
-                            'product_id' => $productId,
-                            'lang' => 'ja',
-                            'name' => 'サンプル商品 ' . $productNumber . ' - 日本語',
-                            'keyword' => 'サンプル, 商品',
-                            'description' => 'サンプル商品 ' . $productNumber . ' の短い説明',
-                            'content' => '<p>こちらはサンプル商品の説明用のダミーテキストです。実際の商品情報に合わせて内容を編集してください。素材、サイズ、使い方などの詳細をここに記載できます。<br>品質にこだわった商品を、お求めやすい価格でお届けします。ご不明な点がございましたら、お気軽にお問い合わせください。</p><p>こちらはサンプル商品の説明用のダミーテキストです。実際の商品情報に合わせて内容を編集してください。素材、サイズ、使い方などの詳細をここに記載できます。<br>品質にこだわった商品を、お求めやすい価格でお届けします。ご不明な点がございましたら、お気軽にお問い合わせください。</p>'
-                        ]
-                    ];
-
-                    // Create product
-                    ShopProduct::create($productData);
-
-                    // Create descriptions
-                    foreach ($productDescriptions as $description) {
-                        ShopProductDescription::create($description);
-                    }
-
-                    // Link to category
-                    ShopProductCategory::create([
-                        'product_id' => $productId,
-                        'category_id' => $categoryId
-                    ]);
-
-                    // Store ownership is set on the product row (store_id) above.
-
-                    // Create promotion if needed
-                    if ($hasPromotion) {
-                        $promotionPrice = floor($productData['price'] * 0.8); // 20% discount, rounded down to ensure integer
-                        ShopProductPromotion::create([
-                            'product_id' => $productId,
-                            'price_promotion' => $promotionPrice,
-                            'date_start' => Carbon::now()->format('Y-m-d H:i:s'),
-                            'date_end' => Carbon::now()->addMonths(2)->format('Y-m-d H:i:s')
-                        ]);
-                    }
-                }
-            }
-
-            // Create product bundles and groups within the same transaction
-            $this->createProductBundle($arrProductSingleIds, $categoryIds);
-            $this->createProductGroup($arrProductSingleIds, $categoryIds);
-            
-            $this->info('Created sample data successfully!');
+        $this->info('Created sample data successfully!');
     }
 
     /**
-     * Hand out the hosted sample photos in rotation, one per product.
+     * Create the root categories and their subcategories from the sample catalog.
      *
-     * WHY a rotation instead of a random pick: the sample creates more products than
-     * there are photos, and walking the whole set before reusing any keeps every photo
-     * at most ceil(products / photos) times — the fewest repeats possible.
-     *
-     * @return string Absolute URL of the photo for the next product.
+     * @return array<int, array{id: string, products: array<int, array{image: int, names: array<string, string>}>}>
+     *         Subcategories in catalog order, each with its id and the products it holds.
      *
      * @aidlc-unit system-cli
      * @aidlc-story US-CLI-005
      */
-    private function nextProductImage(): string
+    private function createCategories(): array
     {
-        $number = $this->productImageCursor % self::PRODUCT_IMAGE_COUNT + 1;
-        $this->productImageCursor++;
+        $leaves = [];
+        foreach (ShopSampleCatalog::categories() as $rootSort => $root) {
+            $rootId = $this->createCategory($root, '', 1, $rootSort);
+            foreach ($root['children'] as $childSort => $child) {
+                $leaves[] = [
+                    'id' => $this->createCategory($child, $rootId, 0, $childSort + 1),
+                    'products' => $child['products'],
+                ];
+            }
+        }
 
+        return $leaves;
+    }
+
+    /**
+     * Create one category row with its vi/en/ja descriptions.
+     *
+     * @param array<string, mixed> $category Catalog entry: alias, image, descriptions.
+     * @param string               $parent   Parent category id, '' for a root category.
+     * @param int                  $top      1 to show the category in the top menu.
+     * @param int                  $sort     Sort order among its siblings.
+     * @return string Id of the created category.
+     *
+     * @aidlc-unit system-cli
+     * @aidlc-story US-CLI-005
+     */
+    private function createCategory(array $category, string $parent, int $top, int $sort): string
+    {
+        $id = gp247_generate_id();
+        ShopCategory::create([
+            'id' => $id,
+            'alias' => $category['alias'],
+            'image' => $this->catalogImage('cate', $category['image']),
+            'parent' => $parent,
+            'top' => $top,
+            'sort' => $sort,
+            'status' => 1,
+            // WHY: 1-1 ownership — the category owns its store via store_id column.
+            'store_id' => GP247_STORE_ID_ROOT,
+        ]);
+        foreach ($category['descriptions'] as $lang => $description) {
+            ShopCategoryDescription::create([
+                'category_id' => $id,
+                'lang' => $lang,
+                'name' => $description['name'],
+                'keyword' => $description['keyword'],
+                'description' => $description['description'],
+            ]);
+        }
+
+        return $id;
+    }
+
+    /**
+     * Create the sample brands.
+     *
+     * @return array<int, string> Ids of the created brands.
+     *
+     * @aidlc-unit system-cli
+     * @aidlc-story US-CLI-005
+     */
+    private function createBrands(): array
+    {
+        $ids = [];
+        foreach (ShopSampleCatalog::brands() as $brand) {
+            $ids[] = $id = gp247_generate_id();
+            DB::connection(GP247_DB_CONNECTION)->table(GP247_DB_PREFIX.'shop_brand')->insert([
+                'id' => $id,
+                'name' => $brand['name'],
+                'alias' => $brand['alias'],
+                'image' => $this->catalogImage('brand', $brand['image']),
+                'url' => $brand['url'],
+                'status' => 1,
+                'sort' => 0,
+            ]);
+        }
+
+        return $ids;
+    }
+
+    /**
+     * Create the sample suppliers.
+     *
+     * @return void
+     *
+     * @aidlc-unit system-cli
+     * @aidlc-story US-CLI-005
+     */
+    private function createSuppliers(): void
+    {
+        foreach (ShopSampleCatalog::suppliers() as $supplier) {
+            DB::connection(GP247_DB_CONNECTION)->table(GP247_DB_PREFIX.'shop_supplier')->insert([
+                'id' => gp247_generate_id(),
+                'name' => $supplier['name'],
+                'alias' => $supplier['alias'],
+                'email' => $supplier['email'],
+                'phone' => $supplier['phone'],
+                'image' => $this->catalogImage('supplier', $supplier['image']),
+                'address' => $supplier['address'],
+                'url' => $supplier['url'],
+                'status' => 1,
+                'store_id' => GP247_STORE_ID_ROOT,
+                'sort' => 0,
+            ]);
+        }
+    }
+
+    /**
+     * Create the single products of every subcategory, each with the photo that shows it.
+     *
+     * SKU `SAMPLE-<subcategory index>-<position>` and alias `sample-product-<n>` keep the
+     * pattern E2E journeys look up (SAMPLE-0-1, SAMPLE-2-1, sample-product-1).
+     *
+     * @param array<int, array{id: string, products: array<int, array{image: int, names: array<string, string>}>}> $leafCategories
+     * @param array<int, string> $brandIds Ids of the sample brands.
+     * @return array<string, string> Photo URL of every created product, keyed by product id.
+     *
+     * @aidlc-unit system-cli
+     * @aidlc-story US-CLI-005
+     */
+    private function createSingleProducts(array $leafCategories, array $brandIds): array
+    {
+        $images = [];
+        $productNumber = 0;
+        foreach ($leafCategories as $categoryKey => $category) {
+            foreach ($category['products'] as $position => $product) {
+                $productNumber++;
+                $productId = gp247_generate_id();
+                $images[$productId] = $this->productImage($product['image']);
+                // WHY rand up to count(): the extra value leaves some products without a brand.
+                $brandPick = rand(0, count($brandIds));
+                $price = rand(100, 500);
+
+                ShopProduct::create($this->productRow([
+                    'id' => $productId,
+                    'sku' => 'SAMPLE-' . $categoryKey . '-' . ($position + 1),
+                    'alias' => 'sample-product-' . $productNumber,
+                    'image' => $images[$productId],
+                    'brand_id' => $brandIds[$brandPick] ?? null,
+                    'price' => $price,
+                    'kind' => 0, // Single product
+                    'created_at' => Carbon::now()->format('Y-m-d 00:00:00'),
+                    'updated_at' => Carbon::now()->format('Y-m-d 00:00:00'),
+                ]));
+                $this->createProductDescriptions($productId, $product['names'], 'sample, product');
+                ShopProductCategory::create(['product_id' => $productId, 'category_id' => $category['id']]);
+
+                // First 2 products of each subcategory get a 20% promotion.
+                if ($position < 2) {
+                    ShopProductPromotion::create([
+                        'product_id' => $productId,
+                        'price_promotion' => floor($price * 0.8),
+                        'date_start' => Carbon::now()->format('Y-m-d H:i:s'),
+                        'date_end' => Carbon::now()->addMonths(2)->format('Y-m-d H:i:s'),
+                    ]);
+                }
+            }
+        }
+
+        return $images;
+    }
+
+    /**
+     * Fill the columns every sample product shares around the given specific ones.
+     *
+     * @param array<string, mixed> $specific Columns that differ per product.
+     * @return array<string, mixed> Complete product row.
+     *
+     * @aidlc-unit system-cli
+     * @aidlc-story US-CLI-005
+     */
+    private function productRow(array $specific): array
+    {
+        return array_merge([
+            // WHY: 1-1 ownership — product owns its store via store_id column.
+            'store_id' => GP247_STORE_ID_ROOT,
+            'brand_id' => null,
+            'supplier_id' => null,
+            'cost' => 0,
+            'stock' => 100,
+            'sold' => 0,
+            'minimum' => 1,
+            'weight_class' => 'kg',
+            'weight' => 1,
+            'length_class' => 'cm',
+            'length' => 10,
+            'width' => 10,
+            'height' => 10,
+            'product_type' => 0, // Physical product
+            'tax_id' => 0,
+            'status' => 1,
+            'sort' => 0,
+            'view' => 0,
+            'date_available' => Carbon::now()->format('Y-m-d H:i:s'),
+            'created_at' => Carbon::now()->format('Y-m-d H:i:s'),
+            'updated_at' => Carbon::now()->format('Y-m-d H:i:s'),
+        ], $specific);
+    }
+
+    /**
+     * Create the vi/en/ja descriptions of a sample product.
+     *
+     * @param string                $productId Product id.
+     * @param array<string, string> $names     Product name per language.
+     * @param string                $keyword   Keyword stored for every language.
+     * @return void
+     *
+     * @aidlc-unit system-cli
+     * @aidlc-story US-CLI-005
+     */
+    private function createProductDescriptions(string $productId, array $names, string $keyword): void
+    {
+        foreach ($names as $lang => $name) {
+            ShopProductDescription::create([
+                'product_id' => $productId,
+                'lang' => $lang,
+                'name' => $name,
+                'keyword' => $keyword,
+                'description' => str_replace(':name', $name, self::SAMPLE_SHORT_DESCRIPTION[$lang]),
+                'content' => self::SAMPLE_CONTENT[$lang],
+            ]);
+        }
+    }
+
+    /**
+     * URL of one hosted sample product photo.
+     *
+     * @param int $number Photo number, 1 … ShopSampleCatalog::PRODUCT_IMAGE_COUNT.
+     * @return string Absolute URL of the photo.
+     *
+     * @aidlc-unit system-cli
+     * @aidlc-story US-CLI-005
+     */
+    private function productImage(int $number): string
+    {
         return self::PRODUCT_IMAGE_BASE . $number . '.png';
     }
 
     /**
-     * Hand out the hosted photos of one catalog kind (category, brand or supplier) in rotation.
+     * URL of one hosted photo of a catalog kind (category, brand or supplier).
      *
-     * WHY a rotation per kind: same reason as nextProductImage() — every photo of the set is
-     * used once before any is reused, so repeats stay at the minimum; each kind has its own set.
-     *
-     * @param string $kind Photo set: 'cate', 'brand' or 'supplier'.
-     * @return string Absolute URL of the photo for the next row of that kind.
+     * @param string $kind   Photo set: 'cate', 'brand' or 'supplier'.
+     * @param int    $number Photo number, 1 … ShopSampleCatalog::CATALOG_IMAGE_COUNT.
+     * @return string Absolute URL of the photo.
      *
      * @aidlc-unit system-cli
      * @aidlc-story US-CLI-005
      */
-    private function nextCatalogImage(string $kind): string
+    private function catalogImage(string $kind, int $number): string
     {
-        $cursor = $this->catalogImageCursor[$kind] ?? 0;
-        $this->catalogImageCursor[$kind] = $cursor + 1;
-        $number = $cursor % self::CATALOG_IMAGE_COUNT + 1;
-
         return self::CATALOG_IMAGE_BASE . $kind . '/' . $kind . '-' . $number . '.png';
     }
 
     /**
-     * Create product bundle
+     * Pick two distinct single products at random.
+     *
+     * @param array<string, string> $singleImages Photo URL of every single product, keyed by id.
+     * @return array<int, string> Ids of the two picked products.
+     *
+     * @aidlc-unit system-cli
+     * @aidlc-story US-CLI-005
      */
-    private function createProductBundle($productSingleIds, $categoryIds)
+    private function pickTwoSingles(array $singleImages): array
+    {
+        $ids = array_keys($singleImages);
+        shuffle($ids);
+
+        return array_slice($ids, 0, 2);
+    }
+
+    /**
+     * Create 3 bundle products, each built from 2 random single products.
+     *
+     * @param array<string, string> $singleImages Photo URL of every single product, keyed by id.
+     * @param array<int, string>    $categoryIds  Ids of the subcategories.
+     * @return void
+     *
+     * @aidlc-unit system-cli
+     * @aidlc-story US-CLI-005
+     */
+    private function createProductBundle(array $singleImages, array $categoryIds): void
     {
         $this->info('Creating product bundles...');
         for ($i = 1; $i <= 3; $i++) {
             $productId = gp247_generate_id();
-            // Basic product data
-            $productData = [
+            $parts = $this->pickTwoSingles($singleImages);
+            $product = ShopProduct::create($this->productRow([
                 'id' => $productId,
-                // WHY: 1-1 ownership — product owns its store via store_id column.
-                'store_id' => GP247_STORE_ID_ROOT,
                 'sku' => 'SAMPLE-BUNDLE-' . $i,
                 'alias' => 'sample-bundle-' . $i,
-                'image' => $this->nextProductImage(),
-                'brand_id' => null,
-                'supplier_id' => null,
-                'price' => rand(500, 1000), // Random price between 100 and 500
-                'cost' => 0,
-                'stock' => 100,
-                'sold' => 0,
-                'minimum' => 1,
-                'weight_class' => 'kg',
-                'weight' => 1,
-                'length_class' => 'cm',
-                'length' => 10,
-                'width' => 10,
-                'height' => 10,
+                // WHY the first part's photo: a bundle has no photo of its own, its parts do.
+                'image' => $singleImages[$parts[0]],
+                'price' => rand(500, 1000),
                 'kind' => GP247_PRODUCT_BUILD,
-                'product_type' => 0, // Physical product
-                'tax_id' => 0,
-                'status' => 1,
-                'sort' => 0,
-                'view' => 0,
-                'date_available' => Carbon::now()->format('Y-m-d H:i:s'),
-                'created_at' => Carbon::now()->format('Y-m-d H:i:s'),
-                'updated_at' => Carbon::now()->format('Y-m-d H:i:s'),
-            ];
-            // Product descriptions
-            $productDescriptions = [
-                'vi' => [
-                    'product_id' => $productId,
-                    'lang' => 'vi',
-                    'name' => 'Sản phẩm bộ ' . $i . ' - Tiếng Việt',
-                    'keyword' => 'sample, product',
-                    'description' => 'Mô tả ngắn cho sản phẩm mẫu ' . $i,
-                    'content' => '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. <br>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. <br>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>'
-                ],
-                'en' => [
-                    'product_id' => $productId,
-                    'lang' => 'en',
-                    'name' => 'Product bundle ' . $i . ' - English',
-                    'keyword' => 'sample, product',
-                    'description' => 'Short description for sample product ' . $i,
-                    'content' => '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. <br>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. <br>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>'
-                ],
-                'ja' => [
-                    'product_id' => $productId,
-                    'lang' => 'ja',
-                    'name' => 'セット商品 ' . $i . ' - 日本語',
-                    'keyword' => 'サンプル, 商品',
-                    'description' => 'サンプル商品 ' . $i . ' の短い説明',
-                    'content' => '<p>こちらはサンプル商品の説明用のダミーテキストです。実際の商品情報に合わせて内容を編集してください。素材、サイズ、使い方などの詳細をここに記載できます。<br>品質にこだわった商品を、お求めやすい価格でお届けします。ご不明な点がございましたら、お気軽にお問い合わせください。</p><p>こちらはサンプル商品の説明用のダミーテキストです。実際の商品情報に合わせて内容を編集してください。素材、サイズ、使い方などの詳細をここに記載できます。<br>品質にこだわった商品を、お求めやすい価格でお届けします。ご不明な点がございましたら、お気軽にお問い合わせください。</p>'
-                ]
-            ];
-            // Create product
-            $product = ShopProduct::create($productData);
-
-            // Create descriptions
-            foreach ($productDescriptions as $description) {
-                ShopProductDescription::create($description);
-            }
-
-            // Link to category
+            ]));
+            $this->createProductDescriptions($productId, [
+                'vi' => 'Combo mẫu ' . $i,
+                'en' => 'Sample bundle ' . $i,
+                'ja' => 'セット商品 ' . $i,
+            ], 'sample, bundle');
             ShopProductCategory::create([
                 'product_id' => $productId,
-                'category_id' => $categoryIds[array_rand($categoryIds)]
+                'category_id' => $categoryIds[array_rand($categoryIds)],
             ]);
 
-            // Store ownership is set on the product row (store_id) above.
-
-            // Random 2 product from $productSingleIds
-            $randomProductIds = [];
-            if (is_array($productSingleIds) && count($productSingleIds) >= 2) {
-                // Shuffle array and get first 2 elements
-                $shuffled = $productSingleIds;
-                shuffle($shuffled);
-                $randomProductIds = array_slice($shuffled, 0, 2);
+            $builds = [];
+            foreach ($parts as $partId) {
+                $builds[$partId] = new ShopProductBuild(['product_id' => $partId, 'quantity' => 1]);
             }
-
-            if (count($randomProductIds) > 0) {
-                $arrDataBuild = [];
-                foreach ($randomProductIds as $key => $pID) {
-                    if ($pID) {
-                        $arrDataBuild[$pID] = new ShopProductBuild(['product_id' => $pID, 'quantity' => 1]);
-                    }
-                }
-                $product->builds()->saveMany($arrDataBuild);
-            }
+            $product->builds()->saveMany($builds);
         }
     }
 
-
     /**
-     * Create product group
+     * Create 3 group products, each grouping 2 random single products.
+     *
+     * @param array<string, string> $singleImages Photo URL of every single product, keyed by id.
+     * @param array<int, string>    $categoryIds  Ids of the subcategories.
+     * @return void
+     *
+     * @aidlc-unit system-cli
+     * @aidlc-story US-CLI-005
      */
-    private function createProductGroup($productSingleIds, $categoryIds)
+    private function createProductGroup(array $singleImages, array $categoryIds): void
     {
         $this->info('Creating product groups...');
         for ($i = 1; $i <= 3; $i++) {
             $productId = gp247_generate_id();
-            // Basic product data
-            $productData = [
+            $members = $this->pickTwoSingles($singleImages);
+            $product = ShopProduct::create($this->productRow([
                 'id' => $productId,
-                // WHY: 1-1 ownership — product owns its store via store_id column.
-                'store_id' => GP247_STORE_ID_ROOT,
                 'sku' => 'SAMPLE-GROUP-' . $i,
                 'alias' => 'sample-group-' . $i,
-                'image' => $this->nextProductImage(),
-                'brand_id' => null,
-                'supplier_id' => null,
+                // WHY the first member's photo: a group has no photo of its own, its members do.
+                'image' => $singleImages[$members[0]],
                 'price' => 0,
-                'cost' => 0,
-                'stock' => 100,
-                'sold' => 0,
-                'minimum' => 1,
-                'weight_class' => 'kg',
-                'weight' => 1,
-                'length_class' => 'cm',
-                'length' => 10,
-                'width' => 10,
-                'height' => 10,
                 'kind' => GP247_PRODUCT_GROUP,
-                'product_type' => 0, // Physical product
-                'tax_id' => 0,
-                'status' => 1,
-                'sort' => 0,
-                'view' => 0,
-                'date_available' => Carbon::now()->format('Y-m-d H:i:s'),
-                'created_at' => Carbon::now()->format('Y-m-d H:i:s'),
-                'updated_at' => Carbon::now()->format('Y-m-d H:i:s'),
-            ];
-            // Product descriptions
-            $productDescriptions = [
-                'vi' => [
-                    'product_id' => $productId,
-                    'lang' => 'vi',
-                    'name' => 'Sản phẩm nhóm ' . $i . ' - Tiếng Việt',
-                    'keyword' => 'sample, product',
-                    'description' => 'Mô tả ngắn cho sản phẩm mẫu ' . $i,
-                    'content' => '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. <br>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. <br>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>'
-                ],
-                'en' => [
-                    'product_id' => $productId,
-                    'lang' => 'en',
-                    'name' => 'Product group ' . $i . ' - English',
-                    'keyword' => 'sample, product',
-                    'description' => 'Short description for sample product ' . $i,
-                    'content' => '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. <br>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. <br>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>'
-                ],
-                'ja' => [
-                    'product_id' => $productId,
-                    'lang' => 'ja',
-                    'name' => 'グループ商品 ' . $i . ' - 日本語',
-                    'keyword' => 'サンプル, 商品',
-                    'description' => 'サンプル商品 ' . $i . ' の短い説明',
-                    'content' => '<p>こちらはサンプル商品の説明用のダミーテキストです。実際の商品情報に合わせて内容を編集してください。素材、サイズ、使い方などの詳細をここに記載できます。<br>品質にこだわった商品を、お求めやすい価格でお届けします。ご不明な点がございましたら、お気軽にお問い合わせください。</p><p>こちらはサンプル商品の説明用のダミーテキストです。実際の商品情報に合わせて内容を編集してください。素材、サイズ、使い方などの詳細をここに記載できます。<br>品質にこだわった商品を、お求めやすい価格でお届けします。ご不明な点がございましたら、お気軽にお問い合わせください。</p>'
-                ]
-            ];
-            // Create product
-            $product = ShopProduct::create($productData);
-
-            // Create descriptions
-            foreach ($productDescriptions as $description) {
-                ShopProductDescription::create($description);
-            }
-
-            // Link to category
+            ]));
+            $this->createProductDescriptions($productId, [
+                'vi' => 'Nhóm sản phẩm mẫu ' . $i,
+                'en' => 'Sample product group ' . $i,
+                'ja' => 'グループ商品 ' . $i,
+            ], 'sample, group');
             ShopProductCategory::create([
                 'product_id' => $productId,
-                'category_id' => $categoryIds[array_rand($categoryIds)]
+                'category_id' => $categoryIds[array_rand($categoryIds)],
             ]);
 
-            // Store ownership is set on the product row (store_id) above.
-
-            // Random 2 product from $productSingleIds
-            $randomProductIds = [];
-            if (is_array($productSingleIds) && count($productSingleIds) >= 2) {
-                // Shuffle array and get first 2 elements
-                $shuffled = $productSingleIds;
-                shuffle($shuffled);
-                $randomProductIds = array_slice($shuffled, 0, 2);
+            $groups = [];
+            foreach ($members as $memberId) {
+                $groups[$memberId] = new ShopProductGroup(['product_id' => $memberId]);
             }
-
-            if (count($randomProductIds) > 0) {
-                $arrDataGroup = [];
-                foreach ($randomProductIds as $key => $pID) {
-                    if ($pID) {
-                        $arrDataGroup[$pID] = new ShopProductGroup(['product_id' => $pID]);
-                    }
-                }
-                $product->groups()->saveMany($arrDataGroup);
-            }
+            $product->groups()->saveMany($groups);
         }
     }
-
 }
