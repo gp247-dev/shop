@@ -182,7 +182,12 @@ class BrandManager extends ResourcePanel
     {
         $editing = $this->editingId !== null && $this->editingId !== '';
         // Store is immutable on edit (ADR 1-1): the record's own store, read from the DB.
-        $store = $editing ? (string) ShopBrand::whereKey($this->editingId)->value('store_id') : (string) $this->resolveCreateStore();
+        // WHY baseQuery(): only a brand of the current store scope may be written; one
+        // outside it (another store) fails closed with a 404 instead of lending its own
+        // store to the WriteContext, which would let the writer's same-store check pass.
+        $store = $editing
+            ? (string) $this->baseQuery()->whereKey($this->editingId)->firstOrFail()->store_id
+            : (string) $this->resolveCreateStore();
         $record = (new BrandWriter)->save(
             new WriteContext($store !== '' ? $store : (string) $this->storeContext()),
             ['form' => $data],
