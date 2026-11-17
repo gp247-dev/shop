@@ -288,9 +288,9 @@ class ShopServiceProvider extends ServiceProvider
         config(['gp247-config.front.seo_content_types' => array_merge(
             (array) config('gp247-config.front.seo_content_types', []),
             [
-                'product' => ['label' => 'admin.seo.type_product'],
-                'category' => ['label' => 'admin.seo.type_category'],
-                'brand' => ['label' => 'admin.seo.type_brand'],
+                'product' => ['label' => 'admin.seo.type_product', 'route' => 'product.detail'],
+                'category' => ['label' => 'admin.seo.type_category', 'route' => 'category.detail'],
+                'brand' => ['label' => 'admin.seo.type_brand', 'route' => 'brand.detail'],
             ]
         )]);
     }

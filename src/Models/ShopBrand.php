@@ -48,6 +48,11 @@ class ShopBrand extends Model
     protected static function boot()
     {
         parent::boot();
+        // Alias change => automatic 301; saves/deletes => IndexNow (US-SEO-alias-auto-redirect, US-SEO-indexnow).
+        // WHY class_exists: shop must keep booting on a gp247/front older than SEO phase 2.
+        if (class_exists(\GP247\Front\Library\SeoUrlLifecycle::class)) {
+            \GP247\Front\Library\SeoUrlLifecycle::watch(static::class, 'brand');
+        }
         // before delete() method call this
         static::deleting(function ($brand) {
             // Own SEO values go with the content (US-SEO-content-meta).
