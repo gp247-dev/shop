@@ -93,7 +93,7 @@
     @endif
 
     @if ($products->count())
-    <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
         @foreach ($products as $product)
         @livewire('gp247-shop-front::product-card', ['productId' => $product->id], key('product-card-'.$product->id))
         @endforeach

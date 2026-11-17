@@ -29,7 +29,7 @@
             <p class="text-lg font-semibold text-ink-700">{{ gp247_language_render('front.no_item') }}</p>
         </div>
     @else
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             @foreach ($wishlist as $item)
                 @php
                     $product = $modelProduct->start()->getDetail($item->id, null, $item->storeId);

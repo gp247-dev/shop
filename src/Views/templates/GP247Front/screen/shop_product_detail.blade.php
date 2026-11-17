@@ -254,7 +254,7 @@
     @if ($productRelation->count())
     <div class="mt-12">
         <h2 class="section-title mb-4">{{ gp247_language_render('front.products_recommend') }}</h2>
-        <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
             @foreach ($productRelation as $productRel)
             @livewire('gp247-shop-front::product-card', ['productId' => $productRel->id], key('product-card-'.$productRel->id))
             @endforeach

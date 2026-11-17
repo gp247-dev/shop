@@ -29,7 +29,7 @@
         <h2 class="section-title">{{ gp247_language_render('front.products_new') }}</h2>
         <a href="{{ gp247_route_front('product.all') }}" class="nav-link">{{ gp247_language_quickly('front.view_all', 'View all') }}</a>
     </div>
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         @foreach ($productsNew as $productNew)
             @php
                 // WHY: Only bundle/group products carry a kind label so shoppers can
