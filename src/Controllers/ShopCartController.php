@@ -230,6 +230,7 @@ class ShopCartController extends RootFrontController
         }
         //Set session dataCheckout
         $this->checkoutState()->setLines($dataCheckout);
+        \GP247\Shop\Events\CommerceEventOccurred::emit('begin_checkout', static fn () => \GP247\Shop\Tracking\CommercePayload::forCartLines($dataCheckout));
 
         $shippingMethod = $service->availableShippingMethods();
         $paymentMethod  = $service->availablePaymentMethods();
@@ -621,6 +622,8 @@ class ShopCartController extends RootFrontController
             );
             $dataCart['options'] = $options;
             (new Cart)->add($dataCart);
+            // WHY nextPage: this response redirects, so the event is shown on the cart page.
+            \GP247\Shop\Events\CommerceEventOccurred::emit('add_to_cart', static fn () => \GP247\Shop\Tracking\CommercePayload::forProduct($product, $qty, $options), true);
             return redirect(gp247_route_front('cart'))
                 ->with(
                     ['success' => gp247_language_render('cart.add_to_cart_success', ['instance' => 'cart'])]
@@ -870,7 +873,10 @@ class ShopCartController extends RootFrontController
             return redirect(gp247_route_front('front.home', ['error' => 'Error Order ID!']));
         }
 
-        return redirect(gp247_route_front('order.success'))->with(['orderID' => $orderID]);
+        // WHY orderCompleted: only this path (and the payment plugins that call it) finishes
+        // an order; a replayed confirm also lands on the thank-you page and must not count
+        // as a purchase (US-LW-commerce-tracking-events).
+        return redirect(gp247_route_front('order.success'))->with(['orderID' => $orderID, 'orderCompleted' => (string) $orderID]);
     }
 
     /**
@@ -925,6 +931,12 @@ class ShopCartController extends RootFrontController
             return redirect(gp247_route_front('front.home'));
         }
         $orderInfo = ShopOrder::with('details')->find($this->checkoutState()->orderId())->toArray();
+        // WHY only right after completeOrder(): its flash marker is gone on a reload, and a
+        // replayed confirm (Back from a gateway) reaches this page without completing the
+        // order (purchase once per order — ADR tracking-consent_commerce-event-contract §5).
+        if ((string) session('orderCompleted') === (string) ($orderInfo['id'] ?? '')) {
+            \GP247\Shop\Events\CommerceEventOccurred::emit('purchase', static fn () => \GP247\Shop\Tracking\CommercePayload::forOrder($orderInfo));
+        }
         $subPath = 'screen.shop_order_success';
         $view = gp247_shop_process_view($this->GP247TemplatePath,$subPath);
         gp247_check_view($view);

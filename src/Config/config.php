@@ -2,6 +2,10 @@
 return [        
     // Config for front
     'shop' => [
+        // Callable fn(string $type): bool asked before an e-commerce event payload is built
+        // (CommerceEventOccurred). gp247/front sets it to "is any tracking service set for
+        // this store"; null = ask nobody (US-LW-commerce-tracking-events).
+        'commerce_event_gate' => null,
         'middleware' => [
             1 => 'customer.auth',
         ],

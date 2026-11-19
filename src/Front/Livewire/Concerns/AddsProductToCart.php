@@ -5,6 +5,7 @@ namespace GP247\Shop\Front\Livewire\Concerns;
 use GP247\Shop\Models\ShopProduct;
 use GP247\Shop\Services\CartItem;
 use GP247\Shop\Services\CartService;
+use GP247\Shop\Tracking\CommercePayload;
 
 /**
  * Shared add-to-cart/wishlist/compare logic for storefront Livewire components.
@@ -84,6 +85,9 @@ trait AddsProductToCart
             'qty' => $qty,
             'storeId' => $resolvedStoreId,
         ]);
+        if ($instance === 'default') {
+            $this->reportAddToCart($product, $qty);
+        }
 
         return [
             'status' => 'added',
@@ -130,5 +134,32 @@ trait AddsProductToCart
     private function errorResult(string $message): array
     {
         return ['status' => 'error', 'message' => $message, 'url' => null, 'count' => null];
+    }
+
+    /**
+     * Tell the page a product went into the cart (browser event `gp247-commerce`), for the
+     * tracking layer of gp247/front if the page has one; no listener ⇒ nothing happens.
+     * WHY never throw: the product is already in the cart, a reporting fault must not undo
+     * the success message.
+     *
+     * @param ShopProduct $product
+     * @param int|float   $qty
+     * @return void
+     *
+     * @aidlc-story US-LW-commerce-tracking-events
+     * @aidlc-adr tracking-consent_commerce-event-contract
+     */
+    private function reportAddToCart(ShopProduct $product, $qty): void
+    {
+        try {
+            if (!\GP247\Shop\Events\CommerceEventOccurred::wanted('add_to_cart')) {
+                return;
+            }
+            $this->dispatch('gp247-commerce', type: 'add_to_cart', payload: CommercePayload::forProduct($product, $qty));
+        } catch (\Throwable $e) {
+            if (function_exists('gp247_report')) {
+                gp247_report('[commerce-event] add_to_cart not reported: ' . $e->getMessage());
+            }
+        }
     }
 }

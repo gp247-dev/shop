@@ -105,6 +105,8 @@ class ShopProductController extends RootFrontController
         if ($product && $product->status && (!gp247_config('product_stock', $storeId) || gp247_config('product_display_out_of_stock', $storeId) || $product->stock > 0)) {
             // Lets MetaHead read the content's own SEO values (US-SEO-content-meta).
             \GP247\Front\Library\SeoContentMeta::subject('product', $product->id);
+            // E-commerce event for the tracking layer, if any (US-LW-commerce-tracking-events).
+            \GP247\Shop\Events\CommerceEventOccurred::emit('view_item', static fn () => \GP247\Shop\Tracking\CommercePayload::forProduct($product));
             // WHY one UPDATE without the model: a page view is not a change of the product —
             // it must not move updated_at (sync clients read "changed since") nor record an
             // event — and the increment stays exact under concurrent views
