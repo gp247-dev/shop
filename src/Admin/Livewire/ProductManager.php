@@ -64,8 +64,13 @@ class ProductManager extends ResourcePanel
      */
     protected bool $keepStateOnSave = true;
 
-    /** @var string Category filter (list). */
-    public string $filterCategory = '';
+    /**
+     * Category filter (list). Nullable: the searchable select clears to null.
+     *
+     * @var string|null
+     * @aidlc-story US-SADM-product-list-find
+     */
+    public ?string $filterCategory = '';
 
     /**
      * Current admin store id (falls back to the root store).
@@ -158,8 +163,8 @@ class ProductManager extends ResourcePanel
             $query->where('store_id', $this->storeId());
         }
 
-        if ($this->filterCategory !== '') {
-            $category = $this->filterCategory;
+        if ((string) $this->filterCategory !== '') {
+            $category = (string) $this->filterCategory;
             $query->whereHas('categories', static fn ($q) => $q->where('category_id', $category));
         }
 
@@ -171,7 +176,9 @@ class ProductManager extends ResourcePanel
      */
     protected function searchable(): array
     {
-        return ['sku', 'alias'];
+        // 'name' is not a product column: applyKeywordSearch() maps it to the
+        // description row of the admin's current language.
+        return ['sku', 'alias', 'name'];
     }
 
     /**
@@ -186,7 +193,53 @@ class ProductManager extends ResourcePanel
         return [
             'sku' => 'product.sku',
             'alias' => 'admin.search.col_alias',
+            'name' => 'product.name',
         ];
+    }
+
+    /**
+     * Keyword filter: product columns match by bound LIKE as in the shared
+     * search; 'name' matches the product name in the admin's current language
+     * (the name the list shows), OR'd in the same group so the store scope of
+     * baseQuery() still applies to every match.
+     *
+     * @param \Illuminate\Database\Eloquent\Builder $query
+     * @param array<int, string> $columns Searched columns, see searchable().
+     * @return void
+     *
+     * @aidlc-unit shop-admin
+     * @aidlc-story US-SADM-product-list-find
+     */
+    protected function applyKeywordSearch($query, array $columns): void
+    {
+        $keyword = $this->searchKeyword();
+        if ($keyword === '' || $columns === []) {
+            return;
+        }
+
+        $needle = '%' . $keyword . '%';
+        $locale = gp247_get_locale();
+        $query->where(static function ($w) use ($columns, $needle, $locale): void {
+            foreach ($columns as $column) {
+                if ($column === 'name') {
+                    $w->orWhereHas('descriptions', static fn ($d) => $d->where('lang', $locale)->where('name', 'like', $needle));
+                    continue;
+                }
+                $w->orWhere($column, 'like', $needle);
+            }
+        });
+    }
+
+    /**
+     * A category picked in the list filter starts again from the first page.
+     *
+     * @return void
+     *
+     * @aidlc-story US-SADM-product-list-find
+     */
+    public function updatedFilterCategory(): void
+    {
+        $this->resetPage();
     }
 
     /**

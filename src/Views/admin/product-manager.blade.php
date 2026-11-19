@@ -310,10 +310,14 @@
     <x-gp247::card :title="gp247_language_render('admin.product.list')">
         <div class="mb-3 grid grid-cols-1 items-start gap-3 lg:grid-cols-2">
             <x-gp247::search-box :placeholder="$this->searchPlaceholder()" :hint="$this->searchHint()" />
-            <select wire:model.live="filterCategory" class="{{ $inputCls }}">
-                <option value="">{{ gp247_language_render('product.category') }}</option>
-                @foreach ($this->filterCategoryOptions() as $id => $title)<option value="{{ $id }}">{{ $title }}</option>@endforeach
-            </select>
+            {{-- Searchable: a site with many categories must not scroll a long list.
+                 Clearing (×) sets null = every category. --}}
+            <x-gp247::searchable-select
+                model="filterCategory"
+                :placeholder="gp247_language_render('product.category')"
+                :options="collect($this->filterCategoryOptions())->map(fn ($name, $id) => ['id' => (string) $id, 'label' => $name])->values()->all()"
+                data-testid="admin-product-list-filter-category"
+            />
         </div>
 
         <x-gp247::table :empty="$rows->isEmpty() ? $this->searchEmptyMessage() : null">
