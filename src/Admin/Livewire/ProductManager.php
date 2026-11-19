@@ -19,6 +19,8 @@ use GP247\Shop\Models\ShopProduct;
 use GP247\Shop\Models\ShopProductDescription;
 use GP247\Shop\Models\ShopSupplier;
 use GP247\Shop\Models\ShopTax;
+use GP247\Shop\Services\Catalog\ProductDuplicateFailed;
+use GP247\Shop\Services\Catalog\ProductDuplicator;
 use GP247\Shop\Services\Catalog\ProductWriter;
 use GP247\Shop\Services\Catalog\WriteContext;
 use Illuminate\Contracts\View\View;
@@ -451,6 +453,66 @@ class ProductManager extends ResourcePanel
     }
 
     /**
+     * Duplicate a product (list row or edit form) and open the copy for editing. Allowed to
+     * whoever may create products; the original is read through baseQuery(), so a store
+     * admin only reaches products of their own store. The stored product is duplicated,
+     * not unsaved input on the form.
+     *
+     * @param int|string $id Product to duplicate.
+     * @return void
+     * @throws \GP247\Core\AdminShell\Domain\AuthorizationException When the admin may not create products.
+     *
+     * @aidlc-unit shop-admin
+     * @aidlc-story US-SADM-product-duplicate, US-SADM-product-duplicate-plugin-hook
+     * @aidlc-adr shop-admin_product-duplicate
+     */
+    public function duplicate($id): void
+    {
+        $this->authorizeAction('store');
+        if (!$this->duplicateOffered()) {
+            throw \GP247\Core\AdminShell\Domain\AuthorizationException::fromReason('duplicate_not_offered');
+        }
+
+        $source = $this->baseQuery()->find($id);
+        if ($source === null) {
+            $this->notify('error', gp247_language_render('admin.display.data_not_found'));
+
+            return;
+        }
+        $admin = function_exists('admin') ? admin()->user() : null;
+        $ctx = new WriteContext((string) $source->store_id, WriteContext::ACTOR_ADMIN, $admin !== null ? (string) $admin->id : null);
+
+        try {
+            $copy = (new ProductDuplicator)->duplicate($ctx, (string) $source->id);
+        } catch (ProductDuplicateFailed $e) {
+            gp247_report(msg: $e->getMessage() . ': ' . ($e->getPrevious()?->getMessage() ?? ''), channel: null);
+            $this->notify('error', gp247_language_render('admin.product.duplicate_failed', ['plugin' => $e->pluginKey]));
+
+            return;
+        }
+
+        $this->editRow((string) $copy->id);
+        $this->showRecordPage((string) $copy->id);
+        $this->notify('success', gp247_language_render('admin.product.duplicate_success'));
+    }
+
+    /**
+     * Whether this screen offers Duplicate. A screen that extends this one (a marketplace
+     * vendor area) has its own create rules — quota, moderation — so it inherits the public
+     * action switched OFF and opts in by overriding this once it applies those rules.
+     *
+     * @return bool
+     *
+     * @aidlc-unit shop-admin
+     * @aidlc-story US-SADM-product-duplicate
+     * @aidlc-adr shop-admin_product-duplicate
+     */
+    protected function duplicateOffered(): bool
+    {
+        return static::class === self::class;
+    }
+
+    /**
      * @param int|string $id
      * @return void
      */
@@ -510,6 +572,7 @@ class ProductManager extends ResourcePanel
         // current admin store), so no multi-store picker context is injected.
         return view($this->panelView(), [
             'rows' => $this->rows(),
+            'duplicateOffered' => $this->duplicateOffered(),
         ])->layout('gp247-admin::layouts.admin', ['title' => $this->pageTitle()]);
     }
 

@@ -19,6 +19,12 @@
     {{-- ===================== LEFT: FORM ===================== --}}
     <x-gp247::card :title="gp247_language_render($editingId ? 'action.edit' : 'admin.product.add_new')">
         <x-slot:actions>
+            @if ($editingId && ($duplicateOffered ?? false))
+                {{-- Duplicates the SAVED product, not unsaved input (US-SADM-product-duplicate). --}}
+                <x-gp247::button size="sm" variant="ghost" wire:click="duplicate('{{ $editingId }}')" wire:confirm="{{ gp247_language_render('admin.product.duplicate_confirm') }}" wire:loading.attr="disabled" wire:target="duplicate" title="{{ gp247_language_render('admin.product.duplicate') }}" data-testid="admin-product-form-duplicate">
+                    <i class="fas fa-copy"></i> {{ gp247_language_render('admin.product.duplicate') }}
+                </x-gp247::button>
+            @endif
             <x-gp247::form-new-button :editing="$editingId" data-testid="admin-product-form-new" />
         </x-slot:actions>
         <form wire:submit="save" class="space-y-4">
@@ -347,6 +353,9 @@
                     <td class="px-4 py-3">
                         <div class="flex items-center justify-end gap-1">
                             <x-gp247::button size="sm" variant="ghost" wire:click="editRow('{{ $row->id }}')" data-testid="admin-product-list-edit"><i class="fas fa-edit"></i></x-gp247::button>
+                            @if ($duplicateOffered ?? false)
+                                <x-gp247::button size="sm" variant="ghost" wire:click="duplicate('{{ $row->id }}')" wire:confirm="{{ gp247_language_render('admin.product.duplicate_confirm') }}" title="{{ gp247_language_render('admin.product.duplicate') }}" data-testid="admin-product-list-duplicate"><i class="fas fa-copy"></i></x-gp247::button>
+                            @endif
                             <x-gp247::button size="sm" variant="ghost" wire:click="delete('{{ $row->id }}')" wire:confirm="{{ gp247_language_render('action.delete_confirm') }}"><i class="fas fa-trash-alt text-red-600"></i></x-gp247::button>
                         </div>
                     </td>
