@@ -360,6 +360,9 @@ return new class extends Migration
                 $table->uuid('product_id');
                 $table->uuid('category_id');
                 $table->primary(['product_id', 'category_id']);
+                // Products of a category are looked up by category_id, which the primary key cannot serve
+                // (US-CMP-product-category-lookup-index); upgrade 2026_11_20_145541 adds it on existing sites.
+                $table->index(['category_id', 'product_id']);
             }
         );
 
