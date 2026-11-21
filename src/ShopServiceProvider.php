@@ -288,9 +288,22 @@ class ShopServiceProvider extends ServiceProvider
         config(['gp247-config.front.seo_content_types' => array_merge(
             (array) config('gp247-config.front.seo_content_types', []),
             [
-                'product' => ['label' => 'admin.seo.type_product', 'route' => 'product.detail'],
-                'category' => ['label' => 'admin.seo.type_category', 'route' => 'category.detail'],
-                'brand' => ['label' => 'admin.seo.type_brand', 'route' => 'brand.detail'],
+                // `source`: where the content lives, for the SEO check and listing tools
+                // (US-SEO-content-type-registry, modification 20261120T212919).
+                'product' => ['label' => 'admin.seo.type_product', 'route' => 'product.detail', 'source' => [
+                    'table' => 'shop_product', 'class' => \GP247\Shop\Models\ShopProduct::class,
+                    'desc' => 'shop_product_description', 'fk' => 'product_id', 'name' => 'name',
+                    'text' => ['content'], 'edit_route' => 'admin_product.edit',
+                ]],
+                'category' => ['label' => 'admin.seo.type_category', 'route' => 'category.detail', 'source' => [
+                    'table' => 'shop_category', 'class' => \GP247\Shop\Models\ShopCategory::class,
+                    'desc' => 'shop_category_description', 'fk' => 'category_id', 'name' => 'name',
+                    'edit_route' => 'admin_category.edit',
+                ]],
+                'brand' => ['label' => 'admin.seo.type_brand', 'route' => 'brand.detail', 'source' => [
+                    'table' => 'shop_brand', 'class' => \GP247\Shop\Models\ShopBrand::class,
+                    'name' => 'name', 'edit_route' => 'admin_brand.edit',
+                ]],
             ]
         )]);
     }
