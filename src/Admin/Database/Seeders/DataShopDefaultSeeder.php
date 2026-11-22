@@ -99,10 +99,29 @@ class DataShopDefaultSeeder extends Seeder
     }
 
         
+    /**
+     * ADMIN_NAME / ADMIN_TITLE of the shop config group, named after the declared product.
+     *
+     * @param string $method  InstallDefaults method (`adminName` or `adminTitle`).
+     * @param string $default Value kept when no product is declared or core predates the setting.
+     * @return string
+     *
+     * @aidlc-unit installer-deploy
+     * @aidlc-story US-DEP-install-default-product-name
+     * @aidlc-adr installer-deploy_install-default-product-name
+     */
+    protected function installAdminName(string $method, string $default): string
+    {
+        // WHY class_exists: shop may run on a core released before InstallDefaults existed.
+        $defaults = \GP247\Core\Support\InstallDefaults::class;
+
+        return class_exists($defaults) ? $defaults::$method($default) : $default;
+    }
+
     public function dataConfigShop($storeId) {
         $dataConfig = [
-            ['group' => 'gp247_cart','code' => 'admin_config','key' => 'ADMIN_NAME','value' => 'GP247 System','sort' => '0','detail' => 'admin.env.ADMIN_NAME','store_id' => $storeId],
-            ['group' => 'gp247_cart','code' => 'admin_config','key' => 'ADMIN_TITLE','value' => 'GP247 Admin','sort' => '0','detail' => 'admin.env.ADMIN_TITLE','store_id' => $storeId],
+            ['group' => 'gp247_cart','code' => 'admin_config','key' => 'ADMIN_NAME','value' => $this->installAdminName('adminName', 'GP247 System'),'sort' => '0','detail' => 'admin.env.ADMIN_NAME','store_id' => $storeId],
+            ['group' => 'gp247_cart','code' => 'admin_config','key' => 'ADMIN_TITLE','value' => $this->installAdminName('adminTitle', 'GP247 Admin'),'sort' => '0','detail' => 'admin.env.ADMIN_TITLE','store_id' => $storeId],
             ['group' => 'gp247_cart','code' => 'admin_config','key' => 'hidden_copyright_footer','value' => '0','sort' => '0','detail' => 'admin.env.hidden_copyright_footer','store_id' => $storeId],
             ['group' => 'gp247_cart','code' => 'admin_config','key' => 'hidden_copyright_footer_admin','value' => '0','sort' => '0','detail' => 'admin.env.hidden_copyright_footer_admin','store_id' => $storeId],
             ['group' => 'gp247_cart','code' => 'display_config','key' => 'product_top','value' => '20','sort' => '0','detail' => 'store.display.product_top','store_id' => $storeId],
