@@ -9,7 +9,7 @@
 
 > 🌐 **言語:** [🇻🇳 Tiếng Việt](./README_vi.md) · [🇬🇧 English](./README.md) · 🇯🇵 日本語（現在）
 
-企業向けの無料 EC サイトシステム
+GP247 の EC パッケージ — S-Cart の土台となる販売機能
 
 `composer require gp247/shop`
 

@@ -9,7 +9,7 @@
 
 > 🌐 **Language:** [🇻🇳 Tiếng Việt](./README_vi.md) · 🇬🇧 English (current) · [🇯🇵 日本語](./README_ja.md)
 
-Free e-commerce platform for businesses
+E-commerce package of GP247 — the selling layer that S-Cart is built on
 
 `composer require gp247/shop`
 

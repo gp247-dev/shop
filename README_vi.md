@@ -9,7 +9,7 @@
 
 > 🌐 **Ngôn ngữ:** 🇻🇳 Tiếng Việt (hiện tại) · [🇬🇧 English](./README.md) · [🇯🇵 日本語](./README_ja.md)
 
-Hệ thống website thương mại điện tử miễn phí cho doanh nghiệp
+Gói thương mại điện tử của GP247 — phần bán hàng mà S-Cart xây dựng trên đó
 
 `composer require gp247/shop`
 

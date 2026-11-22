@@ -1,7 +1,7 @@
 {
   "name": "gp247/shop",
 
-  "description": "Process shopping cart for gp247 Ecommerce with Laravel",
+  "description": "E-commerce package of GP247 (cart, checkout, orders, customers) — the selling layer that S-Cart is built on",
 
   "keywords": ["gp247","shop", "shopping cart", "Ecommerce", "Laravel"],
 
