@@ -9,6 +9,8 @@
 
 > 🌐 **言語:** [🇻🇳 Tiếng Việt](./README_vi.md) · [🇬🇧 English](./README.md) · 🇯🇵 日本語（現在）
 
+[![Tests](https://github.com/gp247net/shop/actions/workflows/tests.yml/badge.svg?branch=master)](https://github.com/gp247net/shop/actions/workflows/tests.yml)
+
 GP247 の EC パッケージ — S-Cart の土台となる販売機能
 
 `composer require gp247/shop`

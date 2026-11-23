@@ -9,6 +9,8 @@
 
 > 🌐 **Language:** [🇻🇳 Tiếng Việt](./README_vi.md) · 🇬🇧 English (current) · [🇯🇵 日本語](./README_ja.md)
 
+[![Tests](https://github.com/gp247net/shop/actions/workflows/tests.yml/badge.svg?branch=master)](https://github.com/gp247net/shop/actions/workflows/tests.yml)
+
 E-commerce package of GP247 — the selling layer that S-Cart is built on
 
 `composer require gp247/shop`

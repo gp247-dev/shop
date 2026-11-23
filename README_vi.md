@@ -9,6 +9,8 @@
 
 > 🌐 **Ngôn ngữ:** 🇻🇳 Tiếng Việt (hiện tại) · [🇬🇧 English](./README.md) · [🇯🇵 日本語](./README_ja.md)
 
+[![Tests](https://github.com/gp247net/shop/actions/workflows/tests.yml/badge.svg?branch=master)](https://github.com/gp247net/shop/actions/workflows/tests.yml)
+
 Gói thương mại điện tử của GP247 — phần bán hàng mà S-Cart xây dựng trên đó
 
 `composer require gp247/shop`
