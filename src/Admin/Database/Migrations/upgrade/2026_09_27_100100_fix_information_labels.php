@@ -14,7 +14,6 @@ use Illuminate\Support\Facades\DB;
  * wording the site owner already edited is kept. Runs via gp247:shop-update.
  *
  * @aidlc-unit shop-admin
- * @aidlc-story US-multi-vendor-pro-vendor-admin-livewire
  */
 return new class extends Migration
 {

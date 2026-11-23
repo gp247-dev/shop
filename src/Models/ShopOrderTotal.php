@@ -34,8 +34,9 @@ class ShopOrderTotal extends Model
      * one off against the table they describe, so an order recalculated by
      * AdminOrder::updateSubTotal() displayed one status too low: fully paid read as
      * "Partial payment", awaiting refund read as "Paid", and unpaid was stored as 0,
-     * matching no row at all. InOut's debt filter compared against the wrong id and
-     * therefore excluded the wrong orders (RISK-BIZ-payment-status-scale-split).
+     * matching no row at all. A plugin filtering orders by payment status compared
+     * against the wrong id and therefore excluded the wrong orders
+     * (RISK-BIZ-payment-status-scale-split).
      *
      * They also sat in the wrong model: payment status belongs to the status table,
      * not to the order-totals row — which is likely why nobody ever checked them

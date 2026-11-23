@@ -1126,7 +1126,6 @@ class OrderManager extends ResourcePanel
      * @return bool True when the entry was refused (and the admin told why).
      *
      * @aidlc-unit shop-admin
-     * @aidlc-story US-inout-revenue-by-payment-date
      * @aidlc-adr shop_order-payment-ledger
      */
     private function periodIsClosed(?string $paidAt): bool

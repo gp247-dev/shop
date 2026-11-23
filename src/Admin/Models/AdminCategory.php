@@ -117,8 +117,7 @@ class AdminCategory extends ShopCategory
      *
      * @return array<int|string, string> Category id => localized name for the active store.
      *
-     * @aidlc-unit multi-store-pro
-     * @aidlc-story US-multi-store-pro-admin-store-switcher
+     * @aidlc-unit shop-admin
      * @aidlc-adr multi-store_admin-store-scope-seam
      */
     public static function getListTitleAdmin()

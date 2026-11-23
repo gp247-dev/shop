@@ -565,9 +565,9 @@ class ShopCartController extends RootFrontController
 
         $formAttr = $data['form_attr'] ?? [];
 
-        // WHY the partner helper: the marketplace ships as MultiVendor (Free) or
-        // MultiVendorPro (Pro unlock); either edition splits the cart per vendor
-        // (ADR multi-vendor_free-pro-split). The helper already knows both keys.
+        // WHY the partner helper: the marketplace plugin comes in two editions and
+        // either one splits the cart per vendor (ADR multi-vendor_free-pro-split).
+        // The helper already knows the keys of both.
         if (gp247_store_check_multi_partner_installed() && (config('app.storeId') == GP247_STORE_ID_ROOT)) {
 
             $product = (new ShopProduct)->getDetail($productId);
