@@ -23,6 +23,14 @@ class ApiAdminAccessLogTest extends TestCase
     use DatabaseTransactions;
     use ApiFixtures;
 
+    /**
+     * Routes that keep their own contract and are left out of the sweep. The gp247/mcp endpoint
+     * is a bare route outside the API groups: it answers 404 while switched off (so a site does
+     * not reveal MCP) and writes one operation-log line per tool call, not per request. Its own
+     * test suite checks both.
+     */
+    private const OWN_CONTRACT_ROUTES = ['gp247_mcp.endpoint'];
+
     private function logsOf($admin)
     {
         return AdminLog::where('user_id', $admin->id)->orderBy('id')->get();
@@ -93,7 +101,7 @@ class ApiAdminAccessLogTest extends TestCase
             // WHY middleware() not gatherMiddleware(): the latter builds every controller of the
             // site (plugins included) just to read controller middleware, which the gates are not.
             $middleware = $route->middleware();
-            if (!in_array('auth:admin-api', $middleware, true)) {
+            if (!in_array('auth:admin-api', $middleware, true) || in_array($route->getName(), self::OWN_CONTRACT_ROUTES, true)) {
                 continue;
             }
             $gated = collect($middleware)->contains(fn ($m) => $m === 'api.admin.active' || str_starts_with((string) $m, 'api.admin:'));

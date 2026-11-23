@@ -28,6 +28,14 @@ class ApiAlwaysJsonTest extends TestCase
     use ApiFixtures;
 
     /**
+     * Routes that keep their own contract and are left out of the sweep. The gp247/mcp endpoint
+     * is a bare route outside the API groups: it answers 404 while switched off (so a site does
+     * not reveal MCP) and writes one operation-log line per tool call, not per request. Its own
+     * test suite checks both.
+     */
+    private const OWN_CONTRACT_ROUTES = ['gp247_mcp.endpoint'];
+
+    /**
      * Registered GP247 API routes, one entry per route (first HTTP verb).
      *
      * @return array<int, array{method: string, uri: string, route: Route}>
@@ -36,7 +44,7 @@ class ApiAlwaysJsonTest extends TestCase
     {
         $routes = [];
         foreach (Router::getRoutes()->getRoutes() as $route) {
-            if (!str_starts_with($route->uri(), 'api/')) {
+            if (!str_starts_with($route->uri(), 'api/') || in_array($route->getName(), self::OWN_CONTRACT_ROUTES, true)) {
                 continue;
             }
             $routes[] = [
