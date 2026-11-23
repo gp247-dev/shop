@@ -65,7 +65,7 @@ class DynamicSqlGuardTest extends TestCase
                 => 'titleSql(): fixed SQL + name column of a declared content source (strict identifier pattern, column exists) quoted by the grammar',
             '\'c.id, sd.canonical, \' . self::titleSql($src) . \' as label\''
                 => 'titleSql(): fixed SQL + name column of a declared content source (strict identifier pattern, column exists) quoted by the grammar',
-            '$title . \' as t, COUNT(*) as n\''
+            '\'MIN(\' . $title . \') as t, COUNT(*) as n\''
                 => '$title = titleSql(): fixed SQL + grammar-quoted name column of a declared content source',
             '$title' => '$title = titleSql(): fixed SQL + grammar-quoted name column of a declared content source',
             '\'c.id, \' . $title . \' as label\''
