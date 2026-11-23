@@ -16,15 +16,17 @@ use GP247\Shop\Models\ShopProductPromotion;
 /**
  * Duplicates a product in one transaction: a new, switched-off product with no stock that
  * carries the original's texts, prices, tax, variants, images, categories, brand, supplier,
- * tags, custom fields, store, content SEO and bundle / group links — then lets plugins copy
- * their own data through `gp247-config.shop.product_duplicators`.
+ * tags, custom fields, store and bundle / group links — then lets plugins copy their own data
+ * through `gp247-config.shop.product_duplicators`.
  *
  * What is copied is an allowlist (see the logical design shop-admin_product-duplicate):
  * a column or table added later is not copied until it is listed here. Not copied: stock,
- * sold, views, last view, barcodes (upc / ean / jan / isbn / mpn), reviews, flash sales and
- * any other plugin data unless the plugin copies it. Changed: status off, sku and alias get
- * a `-copy` / `-copy-<n>` suffix unique in the product's store, each name gets the
- * "(copy)" label of its language. Image and download files are shared, never copied.
+ * sold, views, last view, barcodes (upc / ean / jan / isbn / mpn), content SEO (SEO tab: title,
+ * description, canonical, robots, OG image — the copy starts with an empty SEO tab, because
+ * people duplicating rarely open it and the copy would go live with the original's meta),
+ * reviews, flash sales and any other plugin data unless the plugin copies it. Changed:
+ * status off, sku and alias get a `-copy` / `-copy-<n>` suffix unique in the product's store,
+ * each name gets the "(copy)" label of its language. Image and download files are shared, never copied.
  *
  * Plugin hook — register from the plugin's Provider.php:
  *
@@ -86,7 +88,6 @@ class ProductDuplicator extends CatalogWriter
             $copy->categories()->sync($source->categories()->pluck('category_id')->all());
             $copy->tags()->sync($source->tags()->pluck('tag_id')->all());
             $this->copyChildren($source, $copy);
-            $this->copySeo($source, $copy, $ctx->storeId);
             $this->runPluginDuplicators($source, $copy, $ctx);
 
             return $copy;
@@ -263,61 +264,6 @@ class ProductDuplicator extends CatalogWriter
         foreach (array_chunk($rows, 500) as $chunk) {
             $modelClass::insert($chunk);
         }
-    }
-
-    /**
-     * Copy the content SEO values (gp247/front, SEO phase 1), except a canonical that points
-     * to the original's own page — the copy has its own address.
-     *
-     * @param ShopProduct $source
-     * @param ShopProduct $copy
-     * @param string      $storeId
-     * @return void
-     */
-    private function copySeo(ShopProduct $source, ShopProduct $copy, string $storeId): void
-    {
-        $meta = \GP247\Front\Library\SeoContentMeta::class;
-        // WHY class_exists: shop must keep working on a gp247/front older than SEO phase 1.
-        if (!class_exists($meta) || !$meta::isRegistered('product') || !$meta::tableReady() || $meta::for('product', $source->id) === null) {
-            return;
-        }
-        $state = $meta::formState('product', $source->id);
-        $ownPaths = $this->ownPaths((string) $source->alias);
-        foreach ($state['desc'] as $lang => $values) {
-            $canonical = (string) ($values['canonical'] ?? '');
-            if ($canonical !== '' && in_array(self::normalizedPath($canonical), $ownPaths, true)) {
-                $state['desc'][$lang]['canonical'] = '';
-            }
-        }
-        $meta::save('product', $copy->id, $state, $storeId);
-    }
-
-    /**
-     * Normalised paths of the original's product page in every language.
-     *
-     * @param string $alias
-     * @return array<int, string>
-     */
-    private function ownPaths(string $alias): array
-    {
-        $lifecycle = \GP247\Front\Library\SeoUrlLifecycle::class;
-        if (!class_exists($lifecycle) || !method_exists($lifecycle, 'pathsFor')) {
-            return [];
-        }
-
-        return array_values(array_map([self::class, 'normalizedPath'], $lifecycle::pathsFor('product', $alias)));
-    }
-
-    /**
-     * Path of a URL (or path), decoded and without a trailing slash, so http/https,
-     * host and encoding differences do not matter.
-     *
-     * @param string $url
-     * @return string
-     */
-    private static function normalizedPath(string $url): string
-    {
-        return rtrim(rawurldecode((string) parse_url($url, PHP_URL_PATH)), '/');
     }
 
     /**
