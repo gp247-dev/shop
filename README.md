@@ -17,7 +17,7 @@ E-commerce package of GP247 — the selling layer that S-Cart is built on
 [![Total Downloads](https://poser.pugx.org/GP247/Shop/d/total.svg)](https://packagist.org/packages/GP247/Shop)
 [![Latest Stable Version](https://poser.pugx.org/GP247/Shop/v/stable.svg)](https://packagist.org/packages/GP247/Shop)
 [![License](https://poser.pugx.org/GP247/Shop/license.svg)](https://packagist.org/packages/GP247/Shop)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/gp247net/shop)
+[![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-blue)](https://deepwiki.com/gp247net/shop)
 
 ## Introduction
 

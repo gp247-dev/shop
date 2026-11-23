@@ -17,7 +17,7 @@ GP247 の EC パッケージ — S-Cart の土台となる販売機能
 [![総ダウンロード数](https://poser.pugx.org/GP247/Shop/d/total.svg)](https://packagist.org/packages/GP247/Shop)
 [![最新の安定版](https://poser.pugx.org/GP247/Shop/v/stable.svg)](https://packagist.org/packages/GP247/Shop)
 [![ライセンス](https://poser.pugx.org/GP247/Shop/license.svg)](https://packagist.org/packages/GP247/Shop)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/gp247net/shop)
+[![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-blue)](https://deepwiki.com/gp247net/shop)
 
 
 ## 概要
