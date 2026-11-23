@@ -136,6 +136,27 @@ If you are not using the `GP247Front` template, manually copy the views from `ve
 
 >Step 2: Change the namespace from `GP247\Shop\Controllers` (or `GP247\Shop\Api\Controllers`) to `App\GP247\Shop\Controllers` (or `App\GP247\Shop\Api\Controllers`) — just prepend `App`, keep the rest as-is.
 
+## Running the tests
+
+The `gp247/shop` test suite lives in the `tests/` folder of this repository and runs automatically on GitHub Actions for
+every change (PHP 8.3 / 8.4 × MySQL / MariaDB). The tests are not part of the Composer package; to run them yourself:
+
+1. Clone this repository.
+2. Create a blank Laravel application and install `gp247/shop` **from your clone** as described in the Installation
+   section above, with `gp247/core` 3.18.0 or later and `gp247/front` 3.14.0 or later (the test base classes and shared
+   helpers ship in `GP247\Core\Testing` and `GP247\Front\Testing`). The tests check the copy installed in the
+   application's `vendor/`, so point Composer at the clone first:
+   `composer config repositories.shop '{"type": "path", "url": "/path/to/shop", "options": {"symlink": false}}'`, then
+   `composer require "gp247/core:^3.18" "gp247/front:^3.14" "gp247/shop:*@dev"`. Register `GP247\Front\FrontServiceProvider`
+   and `GP247\Shop\ShopServiceProvider` in `bootstrap/providers.php` and run `php artisan gp247:install`. Use a database
+   **reserved for tests** — its name must end with `_test` or `_testing`. The suite refuses any other database so it
+   never touches real data; to use another name, confirm it with `GP247_TEST_DATABASE=<database name>`.
+3. From the application's root run:
+
+   ```bash
+   GP247_HOST_APP="$PWD" vendor/bin/phpunit -c /path/to/shop/phpunit.xml.dist
+   ```
+
 ## Documentation
 - GP247 documentation: [https://gp247.net/en/docs](https://gp247.net/en/docs)
 
