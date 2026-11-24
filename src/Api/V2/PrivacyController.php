@@ -5,7 +5,9 @@ namespace GP247\Shop\Api\V2;
 use GP247\Core\Api\Support\ApiErrorResponder;
 use GP247\Core\PersonalData\Application\ErasureStepUp;
 use GP247\Core\PersonalData\Application\Export\ExportService;
+use GP247\Core\PersonalData\Application\Requests\CustomerErasures;
 use GP247\Core\PersonalData\Application\Requests\PrivacyExports;
+use GP247\Core\PersonalData\Application\Requests\RequestScheduler;
 use GP247\Core\PersonalData\Domain\Requests\RequestSource;
 use GP247\Core\PersonalData\Infrastructure\Export\ExportRepository;
 use GP247\Core\PersonalData\Infrastructure\Requests\RequestLog;
@@ -21,7 +23,7 @@ use Symfony\Component\HttpFoundation\Response;
  * One package per 24 hours; rows found by email only when the account's email is verified.
  *
  * @aidlc-unit customer-privacy
- * @aidlc-story US-customer-privacy-api, US-customer-privacy-self-export
+ * @aidlc-story US-customer-privacy-api, US-customer-privacy-self-export, US-customer-privacy-self-delete
  * @aidlc-adr customer-privacy_self-service-surfaces
  */
 class PrivacyController
@@ -40,15 +42,8 @@ class PrivacyController
             return ApiErrorResponder::respond(503, 'export_unavailable', 'Data packages cannot be made on this server');
         }
         app(ExportService::class)->pruneSometimes();
-        try {
-            // WHY the same gate as the website: same password check, same two-step code, same lock-out.
-            ErasureStepUp::customer(fn () => $customer)->confirm((string) $request->input('password'), (string) $request->input('code', ''));
-        } catch (StepUpRefused $e) {
-            return match ($e->reason) {
-                StepUpRefused::THROTTLED => ApiErrorResponder::respond(429, 'throttled', 'Too many wrong attempts', ['Retry-After' => (string) max(1, $e->retryAfter)]),
-                StepUpRefused::WRONG_CODE => ApiErrorResponder::respond(422, 'wrong_code', gp247_language_render('customer.privacy.wrong_code')),
-                default => ApiErrorResponder::respond(422, 'wrong_password', gp247_language_render('customer.password_old_notcorrect')),
-            };
+        if ($refused = $this->confirm($customer, $request)) {
+            return $refused;
         }
 
         try {
@@ -67,6 +62,70 @@ class PrivacyController
         }
 
         return response()->json(['data' => $this->state((string) $result['export_id']) + ['reused' => $result['reused']]], $result['reused'] ? 200 : 202);
+    }
+
+    /**
+     * POST member/delete — body: password, code. The erasure waits the days set for the site
+     * (0: it runs now and the token stops working).
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function deleteStore(Request $request): JsonResponse
+    {
+        $request->validate(['password' => 'required|string|max:200', 'code' => 'nullable|string|max:64']);
+        $customer = $request->user();
+        if (!RequestScheduler::ready()) {
+            return ApiErrorResponder::respond(503, 'erasure_unavailable', 'Erasure is not available on this server');
+        }
+        if ($refused = $this->confirm($customer, $request)) {
+            return $refused;
+        }
+        try {
+            $result = app(CustomerErasures::class)->request((string) $customer->id, (string) ($customer->store_id ?? GP247_STORE_ID_ROOT), RequestSource::Api, $this->actor($request));
+        } catch (\RuntimeException $e) {
+            return ApiErrorResponder::respond(503, 'busy', 'Try again in a moment');
+        }
+
+        if ($result['state'] === 'failed') {
+            return ApiErrorResponder::respond(409, 'erasure_failed', 'An earlier erasure of this account failed; the shop has been told');
+        }
+
+        return response()->json(['data' => $result], $result['state'] === 'erasing' ? 200 : 202);
+    }
+
+    /**
+     * GET member/delete — the erasure that has not run yet, if any.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function deleteShow(Request $request): JsonResponse
+    {
+        $pending = RequestScheduler::ready() ? app(CustomerErasures::class)->pendingFor((string) $request->user()->id) : null;
+
+        return response()->json(['data' => $pending === null ? null : [
+            'request_id' => (string) $pending->id,
+            'status' => (string) $pending->status,
+            'runs_at' => $pending->wait_until === null ? null : (string) $pending->wait_until,
+        ]]);
+    }
+
+    /**
+     * DELETE member/delete — call the erasure off.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function deleteCancel(Request $request): JsonResponse
+    {
+        $customerId = (string) $request->user()->id;
+        $pending = RequestScheduler::ready() ? app(CustomerErasures::class)->pendingFor($customerId) : null;
+        if ($pending === null || !app(CustomerErasures::class)->cancel((string) $pending->id, $customerId, $this->actor($request))) {
+            return ApiErrorResponder::notFound();
+        }
+
+        return response()->json(['data' => ['cancelled' => true]]);
     }
 
     /**
@@ -117,6 +176,27 @@ class PrivacyController
 
         // WHY only the last time: a download that breaks halfway can be tried again.
         return $service->lastDownload($id) ? $response->deleteFileAfterSend() : $response;
+    }
+
+    /**
+     * @param object  $customer
+     * @param Request $request
+     * @return JsonResponse|null The refusal, or null when the password (and code) are right.
+     */
+    private function confirm(object $customer, Request $request): ?JsonResponse
+    {
+        try {
+            // WHY the same gate as the website: same password check, same two-step code, same lock-out.
+            ErasureStepUp::customer(fn () => $customer)->confirm((string) $request->input('password'), (string) $request->input('code', ''));
+        } catch (StepUpRefused $e) {
+            return match ($e->reason) {
+                StepUpRefused::THROTTLED => ApiErrorResponder::respond(429, 'throttled', 'Too many wrong attempts', ['Retry-After' => (string) max(1, $e->retryAfter)]),
+                StepUpRefused::WRONG_CODE => ApiErrorResponder::respond(422, 'wrong_code', gp247_language_render('customer.privacy.wrong_code')),
+                default => ApiErrorResponder::respond(422, 'wrong_password', gp247_language_render('customer.password_old_notcorrect')),
+            };
+        }
+
+        return null;
     }
 
     /**

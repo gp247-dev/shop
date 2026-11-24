@@ -347,6 +347,7 @@ class ShopConfigForm extends GP247AdminComponent
             'forgot'   => gp247_language_render('admin.captcha.captcha_page_forgot_password'),
             'checkout' => gp247_language_render('admin.captcha.captcha_page_checkout'),
             'contact'  => gp247_language_render('admin.captcha.captcha_page_contact'),
+            'privacy'  => gp247_language_render('admin.captcha.captcha_page_privacy'),
             'review'   => gp247_language_render('admin.captcha.captcha_page_review'),
         ];
         $fields = [];

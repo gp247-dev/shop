@@ -194,6 +194,11 @@ class ShopServiceProvider extends ServiceProvider
         $this->app->bindIf(\GP247\Shop\Services\Cart\CartStore::class, \GP247\Shop\Services\Cart\SessionCartStore::class);
         // Checkout state of the web (session keys read by plugins); bindIf so it can be replaced.
         $this->app->bindIf(\GP247\Shop\Services\Checkout\CheckoutState::class, \GP247\Shop\Services\Checkout\SessionCheckoutState::class);
+        // Emails of personal data requests (the core decides when, the shop writes them). WHY a
+        // plain bind: it replaces the core's silent default, whichever provider registered first.
+        if (interface_exists(\GP247\Core\PersonalData\Domain\Requests\PrivacyMailer::class)) {
+            $this->app->bind(\GP247\Core\PersonalData\Domain\Requests\PrivacyMailer::class, \GP247\Shop\Privacy\ShopPrivacyMailer::class);
+        }
         // Address providers of country plugins: one registry / resolver / service per request,
         // so a provider is instantiated and asked for its schema once. scoped(), not singleton():
         // they memoise which plugins are enabled, so a long-lived worker must not keep them

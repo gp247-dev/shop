@@ -10,9 +10,11 @@
     - $available (bool): this server can make packages (ZIP extension, site updated)
     - $needsCode (bool): the customer must also type a two-step code
     - $package (array{status, expires_at, next_at, downloads_left}): the package of the last 24 hours
+    - $erasure (array{status, runs_at}|null): the customer's erasure that has not run yet
+    - $waitDays (int): days an erasure waits (0: it runs at once)
 
     @aidlc-unit customer-privacy
-    @aidlc-story US-customer-privacy-self-export
+    @aidlc-story US-customer-privacy-self-export, US-customer-privacy-self-delete
     @aidlc-adr customer-privacy_self-service-surfaces
 --}}
 @php
@@ -67,6 +69,42 @@
             @endif
         </div>
     @endif
+
+    {{-- Delete my account (US-customer-privacy-self-delete) --}}
+    <div class="border-t mt-6 pt-3" data-testid="customer-privacy-delete">
+        <h2 class="text-lg font-semibold mb-2">{{ gp247_language_render('customer.privacy.delete_title') }}</h2>
+        @if ($erasure)
+            <p class="text-sm text-gray-600" data-testid="customer-privacy-delete-pending">
+                {{ $erasure['status'] === 'on_hold'
+                    ? gp247_language_render('customer.privacy.delete_on_hold')
+                    : gp247_language_render('customer.privacy.delete_scheduled', ['date' => (string) $erasure['runs_at']]) }}
+            </p>
+            <form method="POST" action="{{ gp247_route_front('customer.privacy_delete_cancel') }}" class="mt-2">
+                @csrf
+                <button class="btn-primary" type="submit" data-testid="customer-privacy-delete-cancel">{{ gp247_language_render('customer.privacy.cancel_button') }}</button>
+            </form>
+        @else
+            <p class="text-sm text-gray-600">
+                {{ $waitDays > 0
+                    ? gp247_language_render('customer.privacy.delete_intro', ['days' => $waitDays])
+                    : gp247_language_render('customer.privacy.delete_intro_now') }}
+            </p>
+            <form method="POST" action="{{ gp247_route_front('customer.privacy_delete') }}" class="space-y-4 mt-2" data-testid="customer-privacy-delete-form">
+                @csrf
+                <div>
+                    <label class="label" for="privacy-delete-password">{{ gp247_language_render('customer.privacy.password') }}</label>
+                    <input id="privacy-delete-password" type="password" name="password" class="input" autocomplete="current-password" required data-testid="customer-privacy-delete-password">
+                </div>
+                @if ($needsCode)
+                    <div>
+                        <label class="label" for="privacy-delete-code">{{ gp247_language_render('customer.privacy.code') }}</label>
+                        <input id="privacy-delete-code" type="text" name="code" class="input" autocomplete="one-time-code" inputmode="numeric" required data-testid="customer-privacy-delete-code">
+                    </div>
+                @endif
+                <button class="btn-outline" type="submit" data-testid="customer-privacy-delete-submit">{{ gp247_language_render('customer.privacy.delete_button') }}</button>
+            </form>
+        @endif
+    </div>
 </div>
 @endsection
 

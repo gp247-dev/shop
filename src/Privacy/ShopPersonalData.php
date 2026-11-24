@@ -75,7 +75,7 @@ final class ShopPersonalData
 
     /**
      * @param string $idOrEmail
-     * @return array{id: string, email: string|null, name: string|null, store_id: string|null}|null
+     * @return array{id: string, email: string|null, name: string|null, store_id: string|null, verified?: bool}|null
      */
     public static function findCustomer(string $idOrEmail): ?array
     {
@@ -92,6 +92,8 @@ final class ShopPersonalData
             'email' => $customer->email === null ? null : (string) $customer->email,
             'name' => trim((string) $customer->first_name . ' ' . (string) $customer->last_name) ?: null,
             'store_id' => $customer->store_id === null ? null : (string) $customer->store_id,
+            // WHY: rows found by this email join a customer's own request only when it is proven theirs.
+            'verified' => $customer->email_verified_at !== null,
         ];
     }
 

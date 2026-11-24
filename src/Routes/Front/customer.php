@@ -59,6 +59,12 @@ Route::group(
             ->name('customer.privacy_export_status');
         $router->post('/privacy/export/download', $privacyController.'@download')
             ->name('customer.privacy_export_download');
+        // "Delete my account" (US-customer-privacy-self-delete).
+        $router->post('/privacy/delete', $privacyController.'@delete')
+            ->middleware('throttle:6,1')
+            ->name('customer.privacy_delete');
+        $router->post('/privacy/delete/cancel', $privacyController.'@cancelDelete')
+            ->name('customer.privacy_delete_cancel');
 
         // The Email Verification Notice
         $router->get('/email/verify', $customerController.'@verification')

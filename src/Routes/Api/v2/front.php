@@ -56,6 +56,9 @@ Route::group([
         Route::post('member/export', $privacy.'@store')->middleware('throttle:gp247-api-account');
         Route::get('member/export/{id}', $privacy.'@show');
         Route::get('member/export/{id}/download', $privacy.'@download');
+        Route::post('member/delete', $privacy.'@deleteStore')->middleware('throttle:gp247-api-account');
+        Route::get('member/delete', $privacy.'@deleteShow');
+        Route::delete('member/delete', $privacy.'@deleteCancel');
 
         Route::get('member/address/list', $address.'@index');
         Route::post('member/address', $address.'@store');
