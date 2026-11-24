@@ -17,6 +17,7 @@ use PHPUnit\Framework\Attributes\Group;
  *
  * @aidlc-unit shop-address
  * @aidlc-story US-shop-address-data-endpoints
+ * @aidlc-story US-shop-address-postcode-lookup
  */
 #[Group('shop-address')]
 class AddressEndpointsTest extends TestCase
@@ -102,6 +103,17 @@ class AddressEndpointsTest extends TestCase
         $this->getJson(route('address.lookup', ['country' => 'JP', 'postcode' => '100-0001']))
             ->assertOk()
             ->assertJsonPath('suggestions.0.components.prefecture.code', '13');
+    }
+
+    public function test_a_postcode_typed_with_a_japanese_keyboard_reaches_the_plugin(): void
+    {
+        // Full-width digits and dashes, the postal mark and the ideographic space are what a
+        // Japanese input method types; the plugin turns them into a postcode, not the endpoint.
+        foreach (['１００－０００１', '〒100-0001', '100ー0001', '１００　０００１'] as $typed) {
+            $this->getJson(route('address.lookup', ['country' => 'JP', 'postcode' => $typed]))
+                ->assertOk()
+                ->assertJsonPath('fallback', false);
+        }
     }
 
     public function test_malformed_parameters_are_refused(): void

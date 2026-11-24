@@ -49,6 +49,12 @@ interface AddressProvider
      * matched by name. Components that cannot be matched are left out of the result
      * (optionally with an entry in `errors`).
      *
+     * When the country's mapping asks customers to pick again, an entry in `errors` for a
+     * lookup component (the postcode) is shown on that field and the address is refused —
+     * give one only when the value is wrong (e.g. the postcode is not in the chosen
+     * prefecture), not when it is merely missing from the data, which may be older than it.
+     * Unmatched list components get the shop's own message.
+     *
      * @param string                                                  $country    ISO alpha-2 code, upper case.
      * @param array<string, array{code: ?string, name: ?string}>     $components Component key => submitted value.
      * @param string                                                  $locale     Language of the names to return.

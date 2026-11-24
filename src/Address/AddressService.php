@@ -368,6 +368,10 @@ class AddressService
                 // it fell back to typing) the shopper could only guess the exact name.
                 if ($set->strict && $kind === AddressComponent::KIND_LIST && $field->input === AddressField::INPUT_SELECT) {
                     $errors[$field->name] = (string) gp247_language_render('customer.address_not_in_list', ['attribute' => $field->label]);
+                } elseif ($set->strict && $kind === AddressComponent::KIND_LOOKUP && is_string($normalized->errors[$key] ?? null)) {
+                    // WHY only with a reason: a postcode the provider merely does not know may be newer
+                    // than its data; one it refuses (e.g. not in the chosen prefecture) is reported.
+                    $errors[$field->name] = $this->providerMessage($normalized->errors[$key], $field->label);
                 }
                 continue;
             }
@@ -409,6 +413,20 @@ class AddressService
         }
 
         return [$key, $schema, AddressProviderRegistry::instance()->provider($key)];
+    }
+
+    /**
+     * @param string $key   Language key a provider gave as the reason a value was refused.
+     * @param string $label Label of the field.
+     * @return string The provider's message, or the shop's generic one when the key has no translation.
+     */
+    private function providerMessage(string $key, string $label): string
+    {
+        $message = trans($key);
+
+        return is_string($message) && $message !== '' && $message !== $key
+            ? $this->plain($message)
+            : (string) gp247_language_render('customer.address_not_in_list', ['attribute' => $label]);
     }
 
     /**

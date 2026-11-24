@@ -96,7 +96,9 @@ class AddressDataController extends Controller
         $input = $this->validated($request, [
             'country' => ['required', 'string', 'regex:/^[A-Za-z]{2}$/'],
             'lang' => ['nullable', 'string', 'max:10'],
-            'postcode' => ['required', 'string', 'max:16', 'regex:/^[A-Za-z0-9 \-]+$/'],
+            // WHY the full-width set: a Japanese input method types １００－０００１ or 〒100-0001;
+            // the country plugin normalizes it. Anything else (tags, quotes) is still refused.
+            'postcode' => ['required', 'string', 'max:16', 'regex:/^[A-Za-z0-9 \-０-９Ａ-Ｚａ-ｚ－ー‐−―〒　]+$/u'],
         ]);
         if ($input instanceof JsonResponse) {
             return $input;

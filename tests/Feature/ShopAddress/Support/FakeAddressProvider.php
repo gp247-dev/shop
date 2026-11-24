@@ -130,7 +130,12 @@ class FakeAddressProvider implements AddressProvider, ListsAddressOptions, Resol
             $matched['prefecture'] = $prefecture;
         }
         if (isset($components['postcode']['name']) && isset(self::POSTCODES[$components['postcode']['name']])) {
-            $matched['postcode'] = ['code' => $components['postcode']['name'], 'name' => $components['postcode']['name']];
+            $prefectures = array_column(self::POSTCODES[$components['postcode']['name']], 'prefecture');
+            if ($prefecture !== null && !in_array($prefecture['code'], $prefectures, true)) {
+                $errors['postcode'] = 'fake_address.postcode_mismatch';
+            } else {
+                $matched['postcode'] = ['code' => $components['postcode']['name'], 'name' => $components['postcode']['name']];
+            }
         }
         foreach (['municipality', 'town'] as $key) {
             if (!empty($components[$key]['code'])) {
