@@ -6,7 +6,7 @@
     sub-panel (1:N) renders on edit. UI text via gp247_language_render.
 
     @aidlc-unit shop-admin
-    @aidlc-story US-SADM-004
+    @aidlc-story US-SADM-004, US-customer-privacy-admin-delete-complete
     @aidlc-adr ADR-005, ADR-006, ADR-007
 
     Variables: $rows (customer paginator); $form, $customFields, $editingId, $sortField, $sortDir (state).
@@ -204,7 +204,7 @@
                     <td class="px-4 py-3">
                         <div class="flex items-center justify-end gap-1">
                             <x-gp247::button size="sm" variant="ghost" wire:click="editRow('{{ $row->id }}')" data-testid="admin-customer-list-edit"><i class="fas fa-edit"></i></x-gp247::button>
-                            <x-gp247::button size="sm" variant="ghost" wire:click="delete('{{ $row->id }}')" wire:confirm="{{ gp247_language_render('action.delete_confirm') }}"><i class="fas fa-trash-alt text-red-600"></i></x-gp247::button>
+                            <x-gp247::button size="sm" variant="ghost" wire:click="delete('{{ $row->id }}')" data-testid="customer-privacy-list-delete"><i class="fas fa-trash-alt text-red-600"></i></x-gp247::button>
                         </div>
                     </td>
                 </tr>
@@ -213,4 +213,7 @@
 
         <div class="mt-4">{{ $rows->links('gp247-admin::partials.pagination') }}</div>
     </x-gp247::card>
+
+    {{-- Delete = erase the customer's personal data (US-customer-privacy-admin-delete-complete). --}}
+    @include('gp247-shop-admin::partials.customer-erasure')
 </div>

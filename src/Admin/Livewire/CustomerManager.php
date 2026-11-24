@@ -8,6 +8,7 @@ use GP247\Core\Models\AdminCountry;
 use GP247\Shop\Admin\Models\AdminCustomer;
 use GP247\Shop\Models\ShopCustomer;
 use GP247\Shop\Models\ShopCustomerAddress;
+use GP247\Shop\Privacy\Concerns\ErasesCustomers;
 use GP247\Shop\Services\Catalog\CustomerWriter;
 use GP247\Shop\Services\Catalog\WriteContext;
 use Illuminate\Support\Facades\Validator;
@@ -21,15 +22,17 @@ use Illuminate\Validation\ValidationException;
  * (gp247_customer_data_insert_mapping / _edit_mapping + ShopCustomer::createCustomer
  * / updateInfo), so password hashing, the config-driven field set, email
  * uniqueness, the default address and custom fields stay identical to legacy.
- * Scoped to the current admin store. Gated by `admin_customer`.
+ * Scoped to the current admin store. Gated by `admin_customer`. Deleting a customer
+ * erases their personal data everywhere (ErasesCustomers), never the account row alone.
  *
  * @aidlc-unit shop-admin
- * @aidlc-story US-SADM-004
- * @aidlc-adr ADR-001, ADR-005, ADR-006, ADR-007
+ * @aidlc-story US-SADM-004, US-customer-privacy-admin-delete-complete
+ * @aidlc-adr ADR-001, ADR-005, ADR-006, ADR-007, customer-privacy_admin-delete-flow
  */
 class CustomerManager extends ResourcePanel
 {
     use HasCustomFields;
+    use ErasesCustomers;
 
     protected ?string $permission = 'admin_customer';
 
@@ -308,16 +311,16 @@ class CustomerManager extends ResourcePanel
     }
 
     /**
+     * Never called: delete() is replaced by the erasure box (ErasesCustomers). Removing the
+     * account row alone would leave the customer's orders, addresses and sign-ins behind.
+     *
      * @param int|string $id
      * @return void
+     * @throws \LogicException Always.
      */
     protected function deleteModel($id): void
     {
-        // ShopCustomer::boot() cascades the customer's custom fields on delete.
-        $model = $this->baseQuery()->find($id);
-        if ($model !== null) {
-            $model->delete();
-        }
+        throw new \LogicException('Customers are erased through the personal data erasure.');
     }
 
     /**

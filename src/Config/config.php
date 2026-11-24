@@ -63,6 +63,13 @@ return [
             'webhook_prefix' => env('GP247_SHIPPING_WEBHOOK_PREFIX', 'shipping/webhook'),
             'webhook_throttle' => env('GP247_SHIPPING_WEBHOOK_THROTTLE', '120,1'),
         ],
+        'personal_data' => [
+            // Order statuses (shop_order_status ids) after which nothing more happens to an order:
+            // a customer can be erased only when every order of theirs is in one of these.
+            // Default: Canceled 4, Done 5, Failed 6, Refunded 7. Add the id of a status you
+            // created when it also means "finished".
+            'closed_order_statuses' => [4, 5, 6, 7],
+        ],
 
         // Product delivery-type valid values (formerly 'product_tag'). Renamed to
         // 'product_type' alongside the shop_product.tag -> product_type column rename

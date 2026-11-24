@@ -45,6 +45,10 @@
         <x-gp247::card :title="gp247_language_render('order.customer')">
             {{-- Header edit form (US-SADM-order-info-edit) — email is read-only. --}}
             <div class="space-y-3 text-sm">
+                {{-- Customer erased (US-customer-privacy-admin-delete-complete): the order is kept for the accounts. --}}
+                @if (\GP247\Shop\Privacy\ErasedCustomer::is($form['first_name'] ?? ''))
+                    <div data-testid="customer-privacy-order-erased"><x-gp247::badge color="gray">{{ gp247_language_render('admin.personal_data.deleted_marker') }}</x-gp247::badge></div>
+                @endif
                 @if (gp247_config_admin('customer_email'))
                     <div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">{{ gp247_language_render('customer.email') }}</span><span class="text-gray-800 dark:text-gray-100">{{ $order['email'] ?? '' }}</span></div>
                 @endif

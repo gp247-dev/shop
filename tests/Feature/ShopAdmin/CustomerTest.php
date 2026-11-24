@@ -184,14 +184,17 @@ class CustomerTest extends TestCase
         $this->assertSame('ZZ Edited', ShopCustomer::find($row->id)->first_name);
     }
 
-    public function test_delete_removes_customer(): void
+    public function test_delete_opens_the_erasure_box_and_keeps_the_customer_until_confirmed(): void
     {
+        // The erasure itself (step-up, what is erased): tests/Feature/CustomerPrivacy.
         $this->asUser(slugs: ['admin_customer']);
         $row = $this->makeCustomer(['email' => 'zz-delete@example.com']);
 
-        Livewire::test(CustomerManager::class)->call('delete', $row->id);
+        Livewire::test(CustomerManager::class)->call('delete', $row->id)
+            ->assertSet('erasureOpen', true)
+            ->assertSet('erasureCustomerId', (string) $row->id);
 
-        $this->assertNull(ShopCustomer::find($row->id));
+        $this->assertNotNull(ShopCustomer::find($row->id));
     }
 
     public function test_save_denied_for_view_all(): void

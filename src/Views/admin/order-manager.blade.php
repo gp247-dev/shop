@@ -77,7 +77,7 @@
                 @foreach ($rows as $row)
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50" wire:key="order-{{ $row->id }}">
                         <td class="px-4 py-3 text-sm font-medium text-gray-800 dark:text-gray-100">{{ $row->id }}</td>
-                        <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{{ $row->name }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{{ \GP247\Shop\Privacy\ErasedCustomer::display($row->name) }}</td>
                         @if ($showEmail)
                             <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{{ $row->email }}</td>
                         @endif

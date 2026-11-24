@@ -146,6 +146,14 @@ class ShopServiceProvider extends ServiceProvider
             $this->registerCustomerPasswordPolicy();
             // Sync event types of orders, stock, products and customers (US-api-admin-write-shop-events).
             \GP247\Shop\Services\ShopEvents::register();
+            // Where shop keeps customers' personal data and when they cannot be erased yet
+            // (US-customer-privacy-declare-shop-data).
+            \GP247\Shop\Privacy\ShopPersonalData::register();
+            // The erasure box polls its progress every second: not an operation worth a log row each.
+            $logExcept = (string) config('gp247-config.admin.admin_log_livewire_except', \GP247\Core\AdminShell\Support\LivewireOperationLog::DEFAULT_EXCEPT);
+            if (!in_array('tickErasure', array_map('trim', explode(',', $logExcept)), true)) {
+                config(['gp247-config.admin.admin_log_livewire_except' => trim($logExcept . ',tickErasure', ',')]);
+            }
 
             // REST API (v1 + v2) through the core seam, only once shop tables exist
             // (US-CMP-api-package-route-registration).
