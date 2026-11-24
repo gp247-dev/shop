@@ -204,6 +204,9 @@ class ApiCartTest extends TestCase
 
     public function test_reading_the_cart_does_not_query_the_database_once_per_line(): void
     {
+        // WHY frozen: the token's last_used_at is saved on every call, and the save only runs a query
+        // when the second has changed — a slow runner crossing a second adds one query to a read.
+        $this->freezeTime();
         $token = $this->tokenFor($this->makeCustomer(), ['user']);
         $this->cartCall('POST', '/cart/items', $token, null, ['product_id' => (string) $this->makeProduct()->id, 'qty' => 1]);
         $one = $this->queriesOf(fn () => $this->cartCall('GET', '/cart', $token)->assertOk());
