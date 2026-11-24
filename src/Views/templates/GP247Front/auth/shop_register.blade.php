@@ -68,61 +68,6 @@
             </div>
         @endif
 
-        @if (gp247_config('customer_postcode'))
-            <div>
-                <label class="label">{{ gp247_language_render('customer.postcode') }}</label>
-                <input type="text" class="input @error('postcode') input-error @enderror" name="postcode" value="{{ old('postcode') }}">
-                @error('postcode')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
-            </div>
-        @endif
-
-        {{-- City / district precede address1 to match the canonical address order
-             (city -> district -> address1/2/3). Both default OFF. --}}
-        @if (gp247_config('customer_city'))
-            <div>
-                <label class="label">{{ gp247_language_render('customer.city') }}</label>
-                <input type="text" class="input @error('city') input-error @enderror" name="city" @if (gp247_config('customer_city_required')) required @endif value="{{ old('city') }}">
-                @error('city')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
-            </div>
-        @endif
-
-        @if (gp247_config('customer_district'))
-            <div>
-                <label class="label">{{ gp247_language_render('customer.district') }}</label>
-                <input type="text" class="input @error('district') input-error @enderror" name="district" @if (gp247_config('customer_district_required')) required @endif value="{{ old('district') }}">
-                @error('district')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
-            </div>
-        @endif
-        @if (gp247_config('customer_ward'))
-            <div>
-                <label class="label">{{ gp247_language_render('customer.ward') }}</label>
-                <input type="text" class="input @error('ward') input-error @enderror" name="ward" @if (gp247_config('customer_ward_required')) required @endif value="{{ old('ward') }}">
-                @error('ward')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
-            </div>
-        @endif
-
-        <div>
-            <label class="label">{{ gp247_language_render('customer.address1') }}</label>
-            <input type="text" class="input @error('address1') input-error @enderror" name="address1" value="{{ old('address1') }}">
-            @error('address1')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
-        </div>
-
-        @if (gp247_config('customer_address2'))
-            <div>
-                <label class="label">{{ gp247_language_render('customer.address2') }}</label>
-                <input type="text" class="input @error('address2') input-error @enderror" name="address2" value="{{ old('address2') }}">
-                @error('address2')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
-            </div>
-        @endif
-
-        @if (gp247_config('customer_address3'))
-            <div>
-                <label class="label">{{ gp247_language_render('customer.address3') }}</label>
-                <input type="text" class="input @error('address3') input-error @enderror" name="address3" value="{{ old('address3') }}">
-                @error('address3')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
-            </div>
-        @endif
-
         @if (gp247_config('customer_company'))
             <div>
                 <label class="label">{{ gp247_language_render('customer.company') }}</label>
@@ -131,18 +76,15 @@
             </div>
         @endif
 
-        @if (gp247_config('customer_country'))
-            <div>
-                <label class="label">{{ gp247_language_render('customer.country') }}</label>
-                <select class="input @error('country') input-error @enderror" name="country">
-                    <option>__{{ gp247_language_render('customer.country') }}__</option>
-                    @foreach ($countries as $k => $v)
-                        <option value="{{ $k }}" {{ old('country') == $k ? 'selected' : '' }}>{{ $v }}</option>
-                    @endforeach
-                </select>
-                @error('country')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
-            </div>
-        @endif
+        {{-- Address fields: the shared block (AddressForm order; dependent selects when an address plugin serves the country). --}}
+        @include(gp247_shop_process_view($GP247TemplatePath, 'common.shop_address_fields'), [
+            'addressBlock' => \GP247\Shop\Address\View\AddressBlock::for(
+                old('country'),
+                \GP247\Shop\Address\AddressForm::CONTEXT_CUSTOMER_INSERT,
+            ),
+            'testidPrefix' => 'register-address',
+            'countries' => $countries,
+        ])
 
         @if (gp247_config('customer_sex'))
             <div>

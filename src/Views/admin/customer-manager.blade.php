@@ -61,50 +61,27 @@
                     wire:model="form.phone" :error="$errors->first('form.phone')" />
             @endif
 
-            @if (gp247_config_admin('customer_country'))
-                <x-gp247::searchable-select
-                    model="form.country"
-                    :label="gp247_language_render('customer.country')"
-                    :options="collect($this->countryOptions())->map(fn ($name, $code) => ['id' => $code, 'label' => $name])->values()->all()"
-                    :error="$errors->first('form.country')"
-                />
-            @endif
-
-            @if (gp247_config_admin('customer_postcode'))
-                <x-gp247::input :label="gp247_language_render('customer.postcode')" name="postcode"
-                    wire:model="form.postcode" :error="$errors->first('form.postcode')" />
-            @endif
-
-            {{-- City / district precede address1 to match the canonical address order
-                 (city -> district -> address1/2/3). Both default OFF. --}}
-            @if (gp247_config_admin('customer_city'))
-                <x-gp247::input :label="gp247_language_render('customer.city')" name="city"
-                    wire:model="form.city" :error="$errors->first('form.city')" />
-            @endif
-
-            @if (gp247_config_admin('customer_district'))
-                <x-gp247::input :label="gp247_language_render('customer.district')" name="district"
-                    wire:model="form.district" :error="$errors->first('form.district')" />
-            @endif
-            @if (gp247_config_admin('customer_ward'))
-                <x-gp247::input :label="gp247_language_render('customer.ward')" name="ward"
-                    wire:model="form.ward" :error="$errors->first('form.ward')" />
-            @endif
-
-            @if (gp247_config_admin('customer_address1') || true)
-                <x-gp247::input :label="gp247_language_render('customer.address1')" name="address1"
-                    wire:model="form.address1" :error="$errors->first('form.address1')" />
-            @endif
-
-            @if (gp247_config_admin('customer_address2'))
-                <x-gp247::input :label="gp247_language_render('customer.address2')" name="address2"
-                    wire:model="form.address2" :error="$errors->first('form.address2')" />
-            @endif
-
-            @if (gp247_config_admin('customer_address3'))
-                <x-gp247::input :label="gp247_language_render('customer.address3')" name="address3"
-                    wire:model="form.address3" :error="$errors->first('form.address3')" />
-            @endif
+            {{-- Address fields: the shared block in Livewire mode (form.*, codes in addressCodes). --}}
+            @include('gp247-shop-front::common.shop_address_fields', [
+                'addressBlock' => \GP247\Shop\Address\View\AddressBlock::for(
+                    ($form['country'] ?? '') !== '' ? $form['country'] : null,
+                    \GP247\Shop\Address\AddressForm::CONTEXT_ADMIN_CUSTOMER,
+                    mode: \GP247\Shop\Address\View\AddressBlock::MODE_LIVEWIRE,
+                    wire: collect(\GP247\Shop\Address\AddressForm::FIELD_ORDER)->mapWithKeys(fn ($f) => [$f => 'form.' . $f])->all(),
+                    codesPath: 'addressCodes',
+                    storeId: session('adminStoreId') === null ? null : (string) session('adminStoreId'),
+                ),
+                'testidPrefix' => 'shop-admin-customer',
+                'wrapperClass' => 'space-y-4',
+                'errorPrefix' => 'form.',
+                'countries' => $this->countryOptions(),
+                'inputClass' => $inputCls,
+                'inputErrorClass' => 'border-red-400 dark:border-red-500',
+                'labelClass' => 'mb-2 block text-sm font-medium text-gray-700 dark:text-gray-200',
+                'errorClass' => 'mt-1 text-sm text-red-600',
+                'hintClass' => 'mt-1 text-xs text-gray-500 dark:text-gray-400',
+                'buttonClass' => 'rounded-lg border border-blue-600 bg-white px-3 py-2 text-sm text-blue-700 hover:bg-blue-50 dark:bg-gray-800 dark:text-blue-300',
+            ])
 
             @if (gp247_config_admin('customer_company'))
                 <x-gp247::input :label="gp247_language_render('customer.company')" name="company"

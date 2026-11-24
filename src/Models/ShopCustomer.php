@@ -25,6 +25,8 @@ class ShopCustomer extends Authenticatable
     protected $table = GP247_DB_PREFIX.'shop_customer';
     protected $guarded = [];
     protected $connection = GP247_DB_CONNECTION;
+    /** @var array<string, string> address_meta holds the codes of the address (written by AddressService only). */
+    protected $casts = ['address_meta' => 'array'];
     private static $profile = null;
     /**
      * The attributes that should be hidden for arrays.

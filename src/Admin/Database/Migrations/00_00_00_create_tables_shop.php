@@ -127,6 +127,7 @@ return new class extends Migration
                 $table->string('address1', 100)->nullable();
                 $table->string('address2', 100)->nullable();
                 $table->string('address3', 100)->nullable();
+                $table->text('address_meta')->nullable()->comment('JSON AddressMeta: codes of the address components');
                 $table->string('country', 10)->nullable()->default('VN');
                 $table->string('company', 100)->nullable();
                 $table->string('postcode', 10)->nullable();
@@ -467,6 +468,7 @@ return new class extends Migration
                 $table->string('address1', 100)->nullable();
                 $table->string('address2', 100)->nullable();
                 $table->string('address3', 100)->nullable();
+                $table->text('address_meta')->nullable()->comment('JSON AddressMeta: codes of the address components');
                 $table->string('company', 100)->nullable();
                 $table->string('country', 10)->nullable()->default('VN');
                 $table->string('phone', 20)->nullable();
@@ -497,6 +499,7 @@ return new class extends Migration
                 $table->string('address1', 100)->nullable();
                 $table->string('address2', 100)->nullable();
                 $table->string('address3', 100)->nullable();
+                $table->text('address_meta')->nullable()->comment('JSON AddressMeta: codes of the address components');
                 $table->string('country', 10)->nullable()->default('VN');
                 $table->string('phone', 20)->nullable();
                 $table->timestamps();

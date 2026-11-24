@@ -321,6 +321,21 @@ class ShopCartController extends RootFrontController
                 ->withErrors($v->errors());
         }
 
+        // Address plugin of the country (when one serves it): its names replace the typed
+        // ones, a value outside its list is a field error (same check as the wizard).
+        $country = request('country');
+        $addressResolution = \GP247\Shop\Address\AddressService::make()->normalize(
+            null,
+            is_string($country) && $country !== '' ? $country : null,
+            $data,
+            \GP247\Shop\Address\AddressForm::CONTEXT_CHECKOUT
+        );
+        if (!$addressResolution->passes()) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors($addressResolution->errors);
+        }
+
         //Set session shippingMethod
         if (gp247_config('use_shipping')) {
             $this->checkoutState()->setShippingMethod(request('shippingMethod'));
@@ -335,7 +350,7 @@ class ShopCartController extends RootFrontController
         $this->checkoutState()->setAddressProcess(request('address_process'));
         
         //Set session shippingAddress
-        $this->checkoutState()->setShippingAddress([
+        $this->checkoutState()->setShippingAddress(array_merge([
             'first_name'      => request('first_name'),
             'last_name'       => request('last_name'),
             'first_name_kana' => request('first_name_kana'),
@@ -352,7 +367,7 @@ class ShopCartController extends RootFrontController
             'postcode'        => request('postcode'),
             'company'         => request('company'),
             'comment'         => request('comment'),
-        ]);
+        ], $addressResolution->values, ['address_meta' => $addressResolution->meta]));
 
         //Check minimum
         $service = $this->checkoutService();

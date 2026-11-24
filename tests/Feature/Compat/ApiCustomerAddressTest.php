@@ -89,10 +89,19 @@ class ApiCustomerAddressTest extends TestCase
 
     public function test_address_fields_follow_the_store_settings(): void
     {
-        $this->setStoreConfig(['customer_phone' => '1']);
+        $this->setStoreConfig(['customer_phone' => '1', 'customer_phone_required' => '1']);
         $token = $this->tokenOf($this->makeCustomer());
 
         $this->apiCall('POST', $this->v2Front() . '/member/address', $token, ['first_name' => 'ZZ', 'address1' => ''])
             ->assertStatus(422)->assertJsonValidationErrors(['address1', 'phone']);
+    }
+
+    public function test_a_field_that_is_shown_but_not_required_may_be_left_empty(): void
+    {
+        $this->setStoreConfig(['customer_phone' => '1', 'customer_phone_required' => '0']);
+        $token = $this->tokenOf($this->makeCustomer());
+
+        $this->apiCall('POST', $this->v2Front() . '/member/address', $token, ['first_name' => 'ZZ', 'address1' => ''])
+            ->assertStatus(422)->assertJsonValidationErrors(['address1'])->assertJsonMissingValidationErrors(['phone']);
     }
 }

@@ -1,5 +1,4 @@
 <?php
-use GP247\Core\Models\AdminCountry;
 
 /**
  * Function process after order success
@@ -72,10 +71,18 @@ if (!function_exists('gp247_order_process_after_success') && !in_array('gp247_or
 }
 
 /**
- * Function process mapping validate order
+ * Validation rules and messages of the checkout address form.
+ *
+ * @param string|null $country Country of the address being entered, when known — it
+ *                             selects the address plugin serving that country.
+ * @return array{validate: array<string, mixed>, messages: array<string, string>}
+ *
+ * @aidlc-unit storefront
+ * @aidlc-story US-LW-checkout-city-district
+ * @aidlc-story US-shop-address-unified-field-rules
  */
 if (!function_exists('gp247_order_mapping_validate') && !in_array('gp247_order_mapping_validate', config('gp247_functions_except', []))) {
-    function gp247_order_mapping_validate():array
+    function gp247_order_mapping_validate(?string $country = null):array
     {
         $validate = [
             'first_name'     => config('validation.customer.first_name', 'required|string|max:100'),
@@ -97,56 +104,14 @@ if (!function_exists('gp247_order_mapping_validate') && !in_array('gp247_order_m
                 $validate['last_name'] = config('validation.customer.last_name_null', 'nullable|string|max:100');
             }
         }
-        // City / district precede address1 to match the canonical address order
-        // (city -> district -> address1/2/3). Both default OFF, so an install that
-        // never enables them validates exactly as before.
-        if (gp247_config('customer_city')) {
-            if (gp247_config('customer_city_required')) {
-                $validate['city'] = config('validation.customer.city_required', 'required|string|max:100');
-            } else {
-                $validate['city'] = config('validation.customer.city_null', 'nullable|string|max:100');
-            }
-        }
-
-        if (gp247_config('customer_district')) {
-            if (gp247_config('customer_district_required')) {
-                $validate['district'] = config('validation.customer.district_required', 'required|string|max:100');
-            } else {
-                $validate['district'] = config('validation.customer.district_null', 'nullable|string|max:100');
-            }
-        }
-
-        if (gp247_config('customer_ward')) {
-            if (gp247_config('customer_ward_required')) {
-                $validate['ward'] = config('validation.customer.ward_required', 'required|string|max:100');
-            } else {
-                $validate['ward'] = config('validation.customer.ward_null', 'nullable|string|max:100');
-            }
-        }
-
-        if (gp247_config('customer_address1')) {
-            if (gp247_config('customer_address1_required')) {
-                $validate['address1'] = config('validation.customer.address1_required', 'required|string|max:100');
-            } else {
-                $validate['address1'] = config('validation.customer.address1_null', 'nullable|string|max:100');
-            }
-        }
-
-        if (gp247_config('customer_address2')) {
-            if (gp247_config('customer_address2_required')) {
-                $validate['address2'] = config('validation.customer.address2_required', 'required|string|max:100');
-            } else {
-                $validate['address2'] = config('validation.customer.address2_null', 'nullable|string|max:100');
-            }
-        }
-
-        if (gp247_config('customer_address3')) {
-            if (gp247_config('customer_address3_required')) {
-                $validate['address3'] = config('validation.customer.address3_required', 'required|string|max:100');
-            } else {
-                $validate['address3'] = config('validation.customer.address3_null', 'nullable|string|max:100');
-            }
-        }
+        // Address fields: which are shown, which are required and their rules come from
+        // the one resolver every address form shares (AddressForm).
+        $addressSet = \GP247\Shop\Address\AddressForm::make()->resolve(
+            null,
+            $country,
+            \GP247\Shop\Address\AddressForm::CONTEXT_CHECKOUT
+        );
+        $validate = array_merge($validate, $addressSet->rulesFor(['city', 'district', 'ward', 'address1', 'address2', 'address3']));
 
         if (gp247_config('customer_phone')) {
             if (gp247_config('customer_phone_required')) {
@@ -155,22 +120,8 @@ if (!function_exists('gp247_order_mapping_validate') && !in_array('gp247_order_m
                 $validate['phone'] = config('validation.customer.phone_null', 'nullable|regex:/^0[^0][0-9\-]{6,12}$/');
             }
         }
-        if (gp247_config('customer_country')) {
-            $arrayCountry = (new AdminCountry)->pluck('code')->toArray();
-            if (gp247_config('customer_country_required')) {
-                $validate['country'] = config('validation.customer.country_required', 'required|string|min:2').'|in:'. implode(',', $arrayCountry);
-            } else {
-                $validate['country'] = config('validation.customer.country_null', 'nullable|string|min:2').'|in:'. implode(',', $arrayCountry);
-            }
-        }
+        $validate = array_merge($validate, $addressSet->rulesFor(['country', 'postcode']));
 
-        if (gp247_config('customer_postcode')) {
-            if (gp247_config('customer_postcode_required')) {
-                $validate['postcode'] = config('validation.customer.postcode_required', 'required|min:5');
-            } else {
-                $validate['postcode'] = config('validation.customer.postcode_null', 'nullable|min:5');
-            }
-        }
         if (gp247_config('customer_company')) {
             if (gp247_config('customer_company_required')) {
                 $validate['company'] = config('validation.customer.company_required', 'required|string|max:100');

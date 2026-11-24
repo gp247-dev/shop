@@ -2,6 +2,10 @@
 
 namespace GP247\Shop\Api\V2;
 
+use GP247\Shop\Address\AddressForm;
+use GP247\Shop\Address\AddressMapping;
+use GP247\Shop\Address\AddressService;
+use Illuminate\Validation\ValidationException;
 use GP247\Core\Api\Support\ApiErrorResponder;
 use GP247\Front\Controllers\RootFrontController;
 use GP247\Shop\Api\Middleware\CheckoutSessionBridge;
@@ -75,13 +79,31 @@ class CheckoutController extends RootFrontController
             $fields = array_merge($this->savedAddress($saved, $customer), array_filter($fields, fn ($v) => $v !== null));
         }
 
-        $map = gp247_order_mapping_validate();
+        $map = gp247_order_mapping_validate(isset($fields['country']) && is_string($fields['country']) ? $fields['country'] : null);
         $rules = array_diff_key($map['validate'], array_flip(['shippingMethod', 'paymentMethod']));
         Validator::make($fields, $rules, $map['messages'])->validate();
+
+        // Address plugin of the country (when one serves it): same server check as the web
+        // checkout — its names replace the submitted ones, its codes go with the order, a
+        // value outside its list is a 422 on its field. A field may come with `<field>_code`.
+        $codeKeys = array_map(static fn (string $field): string => $field . '_code', AddressMapping::FIELDS);
+        $resolution = AddressService::make()->normalize(
+            null,
+            isset($fields['country']) && is_string($fields['country']) ? $fields['country'] : null,
+            $fields + $request->only($codeKeys),
+            AddressForm::CONTEXT_API
+        );
+        if (!$resolution->passes()) {
+            throw ValidationException::withMessages(array_map(static fn (string $message): array => [$message], $resolution->errors));
+        }
+        $fields = array_merge($fields, $resolution->values);
 
         $address = [];
         foreach (self::ADDRESS_FIELDS as $field) {
             $address[$field] = (string) gp247_text_plain(data: (string) ($fields[$field] ?? ''), stripTags: true);
+        }
+        if ($resolution->meta !== null) {
+            $address['address_meta'] = $resolution->meta;
         }
         $state = $this->state();
         if ($state->shippingAddress() !== $address) {

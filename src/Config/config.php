@@ -40,6 +40,22 @@ return [
         // A shipping plugin adds itself in its Provider.php:
         //   config(['gp247-config.shop.shipping_providers.<PluginKey>' => ['driver' => Class, 'capabilities' => [...]]]);
         'shipping_providers' => [],
+        // Address provider registry (ADR shop-address_provider-capability-contract).
+        // A country address plugin adds itself in its Provider.php:
+        //   config(['gp247-config.shop.address_providers.<PluginKey>' => [
+        //       'driver' => Class, 'countries' => ['VN'], 'capabilities' => ['options', 'postcode']]]);
+        'address_providers' => [],
+        'address' => [
+            // Seconds a provider should allow for a remote call before giving up.
+            'timeout' => env('GP247_ADDRESS_TIMEOUT', 3),
+            // Seconds a list of choices (provinces, wards…) stays cached.
+            'cache_ttl' => env('GP247_ADDRESS_CACHE_TTL', 86400),
+            // First URL segment of the read-only address endpoints ({prefix}/schema|options|lookup).
+            'route_prefix' => env('GP247_ADDRESS_ROUTE_PREFIX', 'address'),
+            // Requests per minute and per IP of the read-only address endpoints.
+            'throttle_options' => env('GP247_ADDRESS_THROTTLE_OPTIONS', '60,1'),
+            'throttle_lookup' => env('GP247_ADDRESS_THROTTLE_LOOKUP', '20,1'),
+        ],
         // Payment plugins whose orders are paid in cash on delivery (COD amount of a shipment).
         'cod_payment_methods' => ['CashPayment'],
         'shipping' => [

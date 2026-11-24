@@ -97,69 +97,21 @@
                 @error('phone')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
             </div>
             @endif
-            @if ($fieldConfig['country']['show'])
-            <div>
-                <label class="block text-sm font-medium text-ink-700 mb-1">{{ gp247_language_render('cart.country') }} @if ($fieldConfig['country']['required'])<span class="text-red-500">*</span>@endif</label>
-                <select wire:model="country" class="input @error('country') input-error @enderror">
-                    <option value="">--</option>
-                    @foreach ($countries as $code => $name)
-                    <option value="{{ $code }}" @selected($country === $code)>{{ $name }}</option>
-                    @endforeach
-                </select>
-                @error('country')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
-            </div>
-            @endif
-            @if ($fieldConfig['postcode']['show'])
-            <div>
-                <label class="block text-sm font-medium text-ink-700 mb-1">{{ gp247_language_render('cart.postcode') }} @if ($fieldConfig['postcode']['required'])<span class="text-red-500">*</span>@endif</label>
-                <input type="text" wire:model="postcode" class="input @error('postcode') input-error @enderror">
-                @error('postcode')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
-            </div>
-            @endif
-            {{-- City / district precede address1 to match the canonical address order
-                 (city -> district -> address1/2/3). Both default OFF via fieldConfig. --}}
-            @if ($fieldConfig['city']['show'])
-            <div>
-                <label class="block text-sm font-medium text-ink-700 mb-1">{{ gp247_language_render('cart.city') }} @if ($fieldConfig['city']['required'])<span class="text-red-500">*</span>@endif</label>
-                <input type="text" wire:model="city" class="input @error('city') input-error @enderror">
-                @error('city')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
-            </div>
-            @endif
-            @if ($fieldConfig['district']['show'])
-            <div>
-                <label class="block text-sm font-medium text-ink-700 mb-1">{{ gp247_language_render('cart.district') }} @if ($fieldConfig['district']['required'])<span class="text-red-500">*</span>@endif</label>
-                <input type="text" wire:model="district" class="input @error('district') input-error @enderror">
-                @error('district')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
-            </div>
-            @endif
-            @if ($fieldConfig['ward']['show'] ?? false)
-            <div>
-                <label class="block text-sm font-medium text-ink-700 mb-1">{{ gp247_language_render('cart.ward') }} @if ($fieldConfig['ward']['required'])<span class="text-red-500">*</span>@endif</label>
-                <input type="text" wire:model="ward" class="input @error('ward') input-error @enderror" data-testid="checkout-address-ward">
-                @error('ward')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
-            </div>
-            @endif
-            @if ($fieldConfig['address1']['show'])
-            <div class="sm:col-span-2">
-                <label class="block text-sm font-medium text-ink-700 mb-1">{{ gp247_language_render('cart.address1') }} @if ($fieldConfig['address1']['required'])<span class="text-red-500">*</span>@endif</label>
-                <input type="text" wire:model="address1" class="input @error('address1') input-error @enderror">
-                @error('address1')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
-            </div>
-            @endif
-            @if ($fieldConfig['address2']['show'])
-            <div>
-                <label class="block text-sm font-medium text-ink-700 mb-1">{{ gp247_language_render('cart.address2') }} @if ($fieldConfig['address2']['required'])<span class="text-red-500">*</span>@endif</label>
-                <input type="text" wire:model="address2" class="input @error('address2') input-error @enderror">
-                @error('address2')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
-            </div>
-            @endif
-            @if ($fieldConfig['address3']['show'])
-            <div>
-                <label class="block text-sm font-medium text-ink-700 mb-1">{{ gp247_language_render('cart.address3') }} @if ($fieldConfig['address3']['required'])<span class="text-red-500">*</span>@endif</label>
-                <input type="text" wire:model="address3" class="input @error('address3') input-error @enderror">
-                @error('address3')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
-            </div>
-            @endif
+            {{-- Address fields: the shared block, bound to this component (values through $wire, codes in addressCodes). --}}
+            @include(gp247_shop_process_view($GP247TemplatePath, 'common.shop_address_fields'), [
+                'addressBlock' => \GP247\Shop\Address\View\AddressBlock::for(
+                    $country !== '' ? $country : null,
+                    \GP247\Shop\Address\AddressForm::CONTEXT_CHECKOUT,
+                    mode: \GP247\Shop\Address\View\AddressBlock::MODE_LIVEWIRE,
+                    wire: array_combine(\GP247\Shop\Address\AddressForm::FIELD_ORDER, \GP247\Shop\Address\AddressForm::FIELD_ORDER),
+                    codesPath: 'addressCodes',
+                ),
+                'testidPrefix' => 'checkout-address',
+                'wrapperClass' => 'grid sm:grid-cols-2 gap-4 sm:col-span-2',
+                'wideFields' => ['address1'],
+                'labelClass' => 'block text-sm font-medium text-ink-700 mb-1',
+                'countries' => $countries,
+            ])
             @if ($fieldConfig['company']['show'])
             <div>
                 <label class="block text-sm font-medium text-ink-700 mb-1">{{ gp247_language_render('cart.company') }} @if ($fieldConfig['company']['required'])<span class="text-red-500">*</span>@endif</label>

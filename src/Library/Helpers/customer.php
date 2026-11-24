@@ -1,7 +1,6 @@
 <?php
 use GP247\Shop\Models\ShopCustomer;
 use GP247\Core\Models\AdminCustomField;
-use GP247\Core\Models\AdminCountry;
 
 
 if (!function_exists('customer') && !in_array('customer', config('gp247_functions_except', []))) {
@@ -106,11 +105,19 @@ if (!function_exists('gp247_customer_sendmail_welcome') && !in_array('gp247_cust
 }
 
 /**
- * Mapping data address of customer
+ * Validation rules, messages and data to store for an address-book entry.
  *
- * @param   [type]  $dataRaw  [$dataRaw description]
+ * The address fields (which are shown, which are required, their rules) come from
+ * AddressForm; when an address plugin serves the country, its names replace the typed
+ * ones and its codes are added as `address_meta` (AddressService::applyToMapping).
  *
- * @return  [array]              [return description]
+ * @param array<string, mixed> $dataRaw Submitted address.
+ * @return array{validate: array<string, mixed>, messages: array<string, string>, dataAddress: array<string, mixed>}
+ *
+ * @aidlc-unit compat-foundation
+ * @aidlc-story US-CMP-api-customer-address
+ * @aidlc-story US-shop-address-unified-field-rules
+ * @aidlc-story US-shop-address-server-normalize
  */
 if (!function_exists('gp247_customer_address_mapping') && !in_array('gp247_customer_address_mapping', config('gp247_functions_except', []))) {
     function gp247_customer_address_mapping(array $dataRaw)
@@ -127,48 +134,34 @@ if (!function_exists('gp247_customer_address_mapping') && !in_array('gp247_custo
             $validate['last_name'] = config('validation.customer.last_name_required', 'required|string|max:100');
             $dataAddress['last_name'] = $dataRaw['last_name']??'';
         }
-        // City / district (canonical order: city -> district -> address1/2/3).
-        // Both default OFF, so an unchanged install maps exactly as before.
-        // Honor the customer_<field>_required toggle so the server matches the
-        // form (which only marks the input required when the toggle is on).
-        if (gp247_config('customer_city')) {
-            $validate['city'] = gp247_config('customer_city_required')
-                ? config('validation.customer.city_required', 'required|string|max:100')
-                : config('validation.customer.city_null', 'nullable|string|max:100');
-            $dataAddress['city'] = $dataRaw['city']??'';
-        }
-        if (gp247_config('customer_district')) {
-            $validate['district'] = gp247_config('customer_district_required')
-                ? config('validation.customer.district_required', 'required|string|max:100')
-                : config('validation.customer.district_null', 'nullable|string|max:100');
-            $dataAddress['district'] = $dataRaw['district']??'';
+        // Address fields: which are shown, which are required and their rules come from
+        // the one resolver every address form shares (AddressForm); values are still
+        // copied field by field, only for fields the shop switched on.
+        $addressSet = \GP247\Shop\Address\AddressForm::make()->resolve(
+            null,
+            isset($dataRaw['country']) && is_string($dataRaw['country']) ? $dataRaw['country'] : null,
+            \GP247\Shop\Address\AddressForm::CONTEXT_ADDRESS_BOOK
+        );
+        $validate = array_merge($validate, $addressSet->rulesFor(['city', 'district', 'ward', 'address2', 'address3']));
+        foreach (['city', 'district', 'ward', 'address2', 'address3'] as $addressField) {
+            if ($addressSet->shows($addressField)) {
+                $dataAddress[$addressField] = $dataRaw[$addressField] ?? '';
+            }
         }
 
-        if (gp247_config('customer_ward')) {
-            $validate['ward'] = gp247_config('customer_ward_required')
-                ? config('validation.customer.ward_required', 'required|string|max:100')
-                : config('validation.customer.ward_null', 'nullable|string|max:100');
-            $dataAddress['ward'] = $dataRaw['ward']??'';
-        }
-        if (gp247_config('customer_address2')) {
-            $validate['address2'] = config('validation.customer.address2_required', 'required|string|max:100');
-            $dataAddress['address2'] = $dataRaw['address2']??'';
-        }
-        if (gp247_config('customer_address3')) {
-            $validate['address3'] = config('validation.customer.address3_required', 'required|string|max:100');
-            $dataAddress['address3'] = $dataRaw['address3']??'';
-        }
         if (gp247_config('customer_phone')) {
-            $validate['phone'] = config('validation.customer.phone_required', 'required|regex:/^0[^0][0-9\-]{6,12}$/');
+            // WHY: honour customer_phone_required like every other customer form — an
+            // optional phone used to be forced here.
+            $validate['phone'] = gp247_config('customer_phone_required')
+                ? config('validation.customer.phone_required', 'required|regex:/^0[^0][0-9\-]{6,12}$/')
+                : config('validation.customer.phone_null', 'nullable|regex:/^0[^0][0-9\-]{6,12}$/');
             $dataAddress['phone'] = $dataRaw['phone']??'';
         }
-        if (gp247_config('customer_country')) {
-            $validate['country'] = config('validation.customer.country_required', 'required|string|min:2');
-            $dataAddress['country'] = $dataRaw['country']??'';
-        }
-        if (gp247_config('customer_postcode')) {
-            $validate['postcode'] = config('validation.customer.postcode_null', 'nullable|min:5');
-            $dataAddress['postcode'] = $dataRaw['postcode']??'';
+        $validate = array_merge($validate, $addressSet->rulesFor(['country', 'postcode']));
+        foreach (['country', 'postcode'] as $addressField) {
+            if ($addressSet->shows($addressField)) {
+                $dataAddress[$addressField] = $dataRaw[$addressField] ?? '';
+            }
         }
 
         $messages = [
@@ -196,6 +189,9 @@ if (!function_exists('gp247_customer_address_mapping') && !in_array('gp247_custo
             'last_name.max'       => gp247_language_render('validation.max', ['attribute'=> gp247_language_render('customer.last_name')]),
         ];
 
+        // Address plugin of the country (when one serves it): its names replace the typed ones,
+        // the codes go to `address_meta`, a value outside its list fails on its field.
+        [$validate, $dataAddress] = \GP247\Shop\Address\AddressService::make()->applyToMapping($addressSet, $dataRaw, $validate, $dataAddress);
         $dataMap = [
             'validate' => $validate,
             'messages' => $messages,
@@ -267,71 +263,18 @@ if (!function_exists('gp247_customer_data_insert_mapping') && !in_array('gp247_c
             }
         }
 
-        // City / district precede address1 (canonical order). Both default OFF,
-        // so a register/create form that never enables them behaves as before.
-        if (gp247_config('customer_city')) {
-            if (gp247_config('customer_city_required')) {
-                $validate['city'] = config('validation.customer.city_required', 'required|string|max:100');
-            } else {
-                $validate['city'] = config('validation.customer.city_null', 'nullable|string|max:100');
-            }
-            if (!empty($dataRaw['city'])) {
-                $dataInsert['city'] = $dataRaw['city'];
-            }
-        }
-
-        if (gp247_config('customer_district')) {
-            if (gp247_config('customer_district_required')) {
-                $validate['district'] = config('validation.customer.district_required', 'required|string|max:100');
-            } else {
-                $validate['district'] = config('validation.customer.district_null', 'nullable|string|max:100');
-            }
-            if (!empty($dataRaw['district'])) {
-                $dataInsert['district'] = $dataRaw['district'];
-            }
-        }
-
-        if (gp247_config('customer_ward')) {
-            if (gp247_config('customer_ward_required')) {
-                $validate['ward'] = config('validation.customer.ward_required', 'required|string|max:100');
-            } else {
-                $validate['ward'] = config('validation.customer.ward_null', 'nullable|string|max:100');
-            }
-            if (!empty($dataRaw['ward'])) {
-                $dataInsert['ward'] = $dataRaw['ward'];
-            }
-        }
-
-        // if (gp247_config('customer_address1')) {
-            if (gp247_config('customer_address1_required')) {
-                $validate['address1'] = config('validation.customer.address1_required', 'required|string|max:100');
-            } else {
-                $validate['address1'] = config('validation.customer.address1_null', 'nullable|string|max:100');
-            }
-            if (!empty($dataRaw['address1'])) {
-                $dataInsert['address1'] = $dataRaw['address1'];
-            }
-        // }
-
-        if (gp247_config('customer_address2')) {
-            if (gp247_config('customer_address2_required')) {
-                $validate['address2'] = config('validation.customer.address2_required', 'required|string|max:100');
-            } else {
-                $validate['address2'] = config('validation.customer.address2_null', 'nullable|string|max:100');
-            }
-            if (!empty($dataRaw['address2'])) {
-                $dataInsert['address2'] = $dataRaw['address2'];
-            }
-        }
-
-        if (gp247_config('customer_address3')) {
-            if (gp247_config('customer_address3_required')) {
-                $validate['address3'] = config('validation.customer.address3_required', 'required|string|max:100');
-            } else {
-                $validate['address3'] = config('validation.customer.address3_null', 'nullable|string|max:100');
-            }
-            if (!empty($dataRaw['address3'])) {
-                $dataInsert['address3'] = $dataRaw['address3'];
+        // Address fields: which are shown, which are required and their rules come from
+        // the one resolver every address form shares (AddressForm); values are still
+        // copied field by field, only for fields the shop switched on.
+        $addressSet = \GP247\Shop\Address\AddressForm::make()->resolve(
+            null,
+            isset($dataRaw['country']) && is_string($dataRaw['country']) ? $dataRaw['country'] : null,
+            \GP247\Shop\Address\AddressForm::CONTEXT_CUSTOMER_INSERT
+        );
+        $validate = array_merge($validate, $addressSet->rulesFor(['city', 'district', 'ward', 'address1', 'address2', 'address3']));
+        foreach (['city', 'district', 'ward', 'address1', 'address2', 'address3'] as $addressField) {
+            if ($addressSet->shows($addressField) && !empty($dataRaw[$addressField])) {
+                $dataInsert[$addressField] = $dataRaw[$addressField];
             }
         }
 
@@ -347,26 +290,10 @@ if (!function_exists('gp247_customer_data_insert_mapping') && !in_array('gp247_c
             }
         }
 
-        if (gp247_config('customer_country')) {
-            $arraycountry = (new AdminCountry)->pluck('code')->toArray();
-            if (gp247_config('customer_country_required')) {
-                $validate['country'] = config('validation.customer.country_required', 'required|string|min:2').'|in:'. implode(',', $arraycountry);
-            } else {
-                $validate['country'] = config('validation.customer.country_null', 'nullable|string|min:2').'|in:'. implode(',', $arraycountry);
-            }
-            if (!empty($dataRaw['country'])) {
-                $dataInsert['country'] = $dataRaw['country'];
-            }
-        }
-
-        if (gp247_config('customer_postcode')) {
-            if (gp247_config('customer_postcode_required')) {
-                $validate['postcode'] = config('validation.customer.postcode_required', 'required|min:5');
-            } else {
-                $validate['postcode'] = config('validation.customer.postcode_null', 'nullable|min:5');
-            }
-            if (!empty($dataRaw['postcode'])) {
-                $dataInsert['postcode'] = $dataRaw['postcode'];
+        $validate = array_merge($validate, $addressSet->rulesFor(['country', 'postcode']));
+        foreach (['country', 'postcode'] as $addressField) {
+            if ($addressSet->shows($addressField) && !empty($dataRaw[$addressField])) {
+                $dataInsert[$addressField] = $dataRaw[$addressField];
             }
         }
 
@@ -474,6 +401,9 @@ if (!function_exists('gp247_customer_data_insert_mapping') && !in_array('gp247_c
             'password.numbers' => gp247_language_render('validation.password.numbers', ['attribute'=> gp247_language_render('customer.password')]),
             'password.symbols' => gp247_language_render('validation.password.symbols', ['attribute'=> gp247_language_render('customer.password')]),
         ];
+        // Address plugin of the country (when one serves it): its names replace the typed ones,
+        // the codes go to `address_meta`, a value outside its list fails on its field.
+        [$validate, $dataInsert] = \GP247\Shop\Address\AddressService::make()->applyToMapping($addressSet, $dataRaw, $validate, $dataInsert);
         $dataMap = [
             'validate' => $validate,
             'messages' => $messages,
@@ -526,6 +456,10 @@ if (!function_exists('gp247_customer_data_edit_mapping') && !in_array('gp247_cus
                 $dataUpdate['email'] = $dataRaw['email'];
             }
         }
+        // Stored address of the customer being edited: an unchanged address is not checked again.
+        $currentAddress = !empty($dataRaw['id'])
+            ? ShopCustomer::whereKey($dataRaw['id'])->first(['city', 'district', 'ward', 'address1', 'address2', 'address3', 'country', 'postcode'])?->toArray()
+            : null;
         //Dont update id
         unset($dataRaw['id']);
 
@@ -540,70 +474,18 @@ if (!function_exists('gp247_customer_data_edit_mapping') && !in_array('gp247_cus
             }
         }
 
-        // City / district precede address1 (canonical order); both default OFF.
-        if (gp247_config('customer_city')) {
-            if (gp247_config('customer_city_required')) {
-                $validate['city'] = config('validation.customer.city_required', 'required|string|max:100');
-            } else {
-                $validate['city'] = config('validation.customer.city_null', 'nullable|string|max:100');
-            }
-            if (!empty($dataRaw['city'])) {
-                $dataUpdate['city'] = $dataRaw['city'];
-            }
-        }
-
-        if (gp247_config('customer_district')) {
-            if (gp247_config('customer_district_required')) {
-                $validate['district'] = config('validation.customer.district_required', 'required|string|max:100');
-            } else {
-                $validate['district'] = config('validation.customer.district_null', 'nullable|string|max:100');
-            }
-            if (!empty($dataRaw['district'])) {
-                $dataUpdate['district'] = $dataRaw['district'];
-            }
-        }
-
-        if (gp247_config('customer_ward')) {
-            if (gp247_config('customer_ward_required')) {
-                $validate['ward'] = config('validation.customer.ward_required', 'required|string|max:100');
-            } else {
-                $validate['ward'] = config('validation.customer.ward_null', 'nullable|string|max:100');
-            }
-            if (!empty($dataRaw['ward'])) {
-                $dataUpdate['ward'] = $dataRaw['ward'];
-            }
-        }
-
-        // if (gp247_config('customer_address1')) {
-            if (gp247_config('customer_address1_required')) {
-                $validate['address1'] = config('validation.customer.address1_required', 'required|string|max:100');
-            } else {
-                $validate['address1'] = config('validation.customer.address1_null', 'nullable|string|max:100');
-            }
-            if (!empty($dataRaw['address1'])) {
-                $dataUpdate['address1'] = $dataRaw['address1'];
-            }
-        // }
-
-        if (gp247_config('customer_address2')) {
-            if (gp247_config('customer_address2_required')) {
-                $validate['address2'] = config('validation.customer.address2_required', 'required|string|max:100');
-            } else {
-                $validate['address2'] = config('validation.customer.address2_null', 'nullable|string|max:100');
-            }
-            if (!empty($dataRaw['address2'])) {
-                $dataUpdate['address2'] = $dataRaw['address2'];
-            }
-        }
-
-        if (gp247_config('customer_address3')) {
-            if (gp247_config('customer_address3_required')) {
-                $validate['address3'] = config('validation.customer.address3_required', 'required|string|max:100');
-            } else {
-                $validate['address3'] = config('validation.customer.address3_null', 'nullable|string|max:100');
-            }
-            if (!empty($dataRaw['address3'])) {
-                $dataUpdate['address3'] = $dataRaw['address3'];
+        // Address fields: which are shown, which are required and their rules come from
+        // the one resolver every address form shares (AddressForm); values are still
+        // copied field by field, only for fields the shop switched on.
+        $addressSet = \GP247\Shop\Address\AddressForm::make()->resolve(
+            null,
+            isset($dataRaw['country']) && is_string($dataRaw['country']) ? $dataRaw['country'] : null,
+            \GP247\Shop\Address\AddressForm::CONTEXT_CUSTOMER_EDIT
+        );
+        $validate = array_merge($validate, $addressSet->rulesFor(['city', 'district', 'ward', 'address1', 'address2', 'address3']));
+        foreach (['city', 'district', 'ward', 'address1', 'address2', 'address3'] as $addressField) {
+            if ($addressSet->shows($addressField) && !empty($dataRaw[$addressField])) {
+                $dataUpdate[$addressField] = $dataRaw[$addressField];
             }
         }
 
@@ -619,26 +501,10 @@ if (!function_exists('gp247_customer_data_edit_mapping') && !in_array('gp247_cus
             }
         }
 
-        if (gp247_config('customer_country')) {
-            $arraycountry = (new AdminCountry)->pluck('code')->toArray();
-            if (gp247_config('customer_country_required')) {
-                $validate['country'] = config('validation.customer.country_required', 'required|string|min:2').'|in:'. implode(',', $arraycountry);
-            } else {
-                $validate['country'] = config('validation.customer.country_null', 'nullable|string|min:2').'|in:'. implode(',', $arraycountry);
-            }
-            if (!empty($dataRaw['country'])) {
-                $dataUpdate['country'] = $dataRaw['country'];
-            }
-        }
-
-        if (gp247_config('customer_postcode')) {
-            if (gp247_config('customer_postcode_required')) {
-                $validate['postcode'] = config('validation.customer.postcode_required', 'required|min:5');
-            } else {
-                $validate['postcode'] = config('validation.customer.postcode_null', 'nullable|min:5');
-            }
-            if (!empty($dataRaw['postcode'])) {
-                $dataUpdate['postcode'] = $dataRaw['postcode'];
+        $validate = array_merge($validate, $addressSet->rulesFor(['country', 'postcode']));
+        foreach (['country', 'postcode'] as $addressField) {
+            if ($addressSet->shows($addressField) && !empty($dataRaw[$addressField])) {
+                $dataUpdate[$addressField] = $dataRaw[$addressField];
             }
         }
 
@@ -738,6 +604,9 @@ if (!function_exists('gp247_customer_data_edit_mapping') && !in_array('gp247_cus
             'password.numbers' => gp247_language_render('validation.password.numbers', ['attribute'=> gp247_language_render('customer.password')]),
             'password.symbols' => gp247_language_render('validation.password.symbols', ['attribute'=> gp247_language_render('customer.password')]),
         ];
+        // Address plugin of the country (when one serves it): its names replace the typed ones,
+        // the codes go to `address_meta`, a value outside its list fails on its field.
+        [$validate, $dataUpdate] = \GP247\Shop\Address\AddressService::make()->applyToMapping($addressSet, $dataRaw, $validate, $dataUpdate, $currentAddress);
         $dataMap = [
             'validate' => $validate,
             'messages' => $messages,

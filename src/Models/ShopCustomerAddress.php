@@ -10,6 +10,8 @@ class ShopCustomerAddress extends Model
     use \GP247\Core\Models\UuidTrait;
 
     protected $guarded    = [];
+    /** @var array<string, string> address_meta holds the codes of the address (written by AddressService only). */
+    protected $casts = ['address_meta' => 'array'];
     public $table = GP247_DB_PREFIX.'shop_customer_address';
     protected $connection = GP247_DB_CONNECTION;
 

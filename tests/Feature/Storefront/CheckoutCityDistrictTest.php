@@ -61,8 +61,9 @@ class CheckoutCityDistrictTest extends TestCase
 
         $html = Livewire::test(CheckoutWizard::class)->html();
 
-        $this->assertStringNotContainsString('wire:model="city"', $html);
-        $this->assertStringNotContainsString('wire:model="district"', $html);
+        // The address fields come from the shared address block (US-LW-checkout-city-district).
+        $this->assertStringNotContainsString('data-testid="checkout-address-city"', $html);
+        $this->assertStringNotContainsString('data-testid="checkout-address-district"', $html);
     }
 
     public function test_city_district_shown_when_config_enabled(): void
@@ -72,8 +73,8 @@ class CheckoutCityDistrictTest extends TestCase
 
         $html = Livewire::test(CheckoutWizard::class)->html();
 
-        $this->assertStringContainsString('wire:model="city"', $html);
-        $this->assertStringContainsString('wire:model="district"', $html);
+        $this->assertStringContainsString('data-testid="checkout-address-city"', $html);
+        $this->assertStringContainsString('data-testid="checkout-address-district"', $html);
     }
 
     public function test_city_district_not_required_when_disabled(): void

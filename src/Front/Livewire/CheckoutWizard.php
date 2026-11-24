@@ -61,6 +61,24 @@ class CheckoutWizard extends BaseFrontComponent
     public string $company         = '';
     public string $comment         = '';
 
+    /**
+     * Codes of the address fields chosen from an address plugin's lists, keyed by
+     * field name (city, ward…). Sent by the browser, so never trusted: the server
+     * checks them when the address step is left (US-shop-address-server-normalize).
+     *
+     * @var array<string, string>
+     */
+    public array $addressCodes = [];
+
+    /**
+     * Codes the address plugin confirmed for the address in the form — what the order
+     * will store as `address_meta`. Server state only.
+     *
+     * @var array<string, mixed>|null
+     */
+    #[Locked]
+    public ?array $addressMeta = null;
+
     /** @var string Saved-address ID being applied, 'new', or '' (manual entry). */
     public string $address_process = '';
 
@@ -180,6 +198,10 @@ class CheckoutWizard extends BaseFrontComponent
         $this->address3        = (string) ($address->address3        ?? '');
         $this->postcode        = (string) ($address->postcode        ?? '');
         $this->country         = (string) ($address->country         ?? '');
+        // WHY: codes picked for the previous address must not be sent with this one; the
+        // saved names are matched again when the step is left.
+        $this->addressCodes    = [];
+        $this->addressMeta     = null;
     }
 
     /**
@@ -417,22 +439,65 @@ class CheckoutWizard extends BaseFrontComponent
      */
     private function advanceFromAddress(): void
     {
-        $dataMap = gp247_order_mapping_validate();
+        $dataMap = gp247_order_mapping_validate($this->country !== '' ? $this->country : null);
         $rules   = array_filter(
             $dataMap['validate'],
             fn(string $k): bool => !in_array($k, ['shippingMethod', 'paymentMethod'], true),
             ARRAY_FILTER_USE_KEY
         );
         $this->validate($rules, $dataMap['messages']);
+        if (!$this->normalizeAddress()) {
+            return;
+        }
 
         $next = $this->nextStepId();
         if ($next === 'shipping') {
             $this->quoteShippingRates();
         }
-        if ($next === 'confirm') {
-            $this->commitToSession();
+        if ($next === 'confirm' && !$this->commitToSession()) {
+            return;
         }
         $this->step = $next;
+    }
+
+    /**
+     * Checks the address against the address plugin of its country: the plugin's names
+     * replace what the browser sent and the confirmed codes are kept for the order. A
+     * value outside the plugin's list is reported on its field. Without a plugin (or
+     * when it fails) the address is kept as typed.
+     *
+     * @return bool False when a field was refused.
+     *
+     * @aidlc-unit storefront
+     * @aidlc-story US-shop-address-server-normalize
+     */
+    private function normalizeAddress(): bool
+    {
+        $input = [];
+        foreach (\GP247\Shop\Address\AddressForm::FIELD_ORDER as $field) {
+            $input[$field] = (string) $this->{$field};
+            $code = $this->addressCodes[$field] ?? '';
+            $input[$field . '_code'] = is_scalar($code) ? (string) $code : '';
+        }
+        $resolution = \GP247\Shop\Address\AddressService::make()->normalize(
+            null,
+            $this->country !== '' ? $this->country : null,
+            $input,
+            \GP247\Shop\Address\AddressForm::CONTEXT_CHECKOUT
+        );
+        if (!$resolution->passes()) {
+            foreach ($resolution->errors as $field => $message) {
+                $this->addError($field, $message);
+            }
+
+            return false;
+        }
+        foreach ($resolution->values as $field => $value) {
+            $this->{$field} = $value;
+        }
+        $this->addressMeta = $resolution->meta;
+
+        return true;
     }
 
     /**
@@ -446,7 +511,9 @@ class CheckoutWizard extends BaseFrontComponent
 
         $next = $this->nextStepId();
         if ($next === 'confirm') {
-            $this->commitToSession();
+            if (!$this->commitToSession()) {
+                return;
+            }
         } else {
             // Persist early so processDataTotal() can read it on confirm.
             $this->checkoutState()->setShippingMethod($this->pluginKeyOf($this->shippingMethod));
@@ -462,7 +529,9 @@ class CheckoutWizard extends BaseFrontComponent
         if (gp247_config('use_payment')) {
             $this->validate(['paymentMethod' => 'required']);
         }
-        $this->commitToSession();
+        if (!$this->commitToSession()) {
+            return;
+        }
         $this->step = 'confirm';
     }
 
@@ -482,9 +551,20 @@ class CheckoutWizard extends BaseFrontComponent
     /**
      * Write all wizard state to session so the addOrder() controller can read it
      * via session() calls without any modification (ADR-010 Hybrid Strangler).
+     *
+     * The address is checked against the address plugin once more here: the address
+     * fields are public, so they may have changed after the address step was left, and
+     * the codes written to the session must be those of exactly this address.
+     *
+     * @return bool False when the address was refused — the wizard is back on the address step.
      */
-    private function commitToSession(): void
+    private function commitToSession(): bool
     {
+        if (!$this->normalizeAddress()) {
+            $this->step = 'address';
+
+            return false;
+        }
         $c = fn(string $v): string => (string) gp247_text_plain(data: $v, stripTags: true);
 
         $state = $this->checkoutState();
@@ -508,10 +588,14 @@ class CheckoutWizard extends BaseFrontComponent
             'country'         => $c($this->country),
             'company'         => $c($this->company),
             'comment'         => $c($this->comment),
+            // Codes confirmed by the address plugin for exactly this address (null without one).
+            'address_meta'    => $this->addressMeta,
         ]);
 
         // WHY: processDataTotal() depends on session('shippingMethod') being set.
         $this->recomputeTotals();
+
+        return true;
     }
 
     // -------------------------------------------------------------------------

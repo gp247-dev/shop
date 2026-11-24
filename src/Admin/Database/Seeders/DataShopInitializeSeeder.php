@@ -151,6 +151,10 @@ class DataShopInitializeSeeder extends Seeder
                 ['parent_id' => $idBlockSetting,'sort' => 70,'title' => 'admin.menu_titles.payment_status','icon' => 'fas fa-recycle','uri' => 'admin::payment_status','key' => null,'type' => 0],
                 ['parent_id' => $idBlockSetting,'sort' => 60,'title' => 'admin.menu_titles.attribute_group','icon' => 'fas fa-braille','uri' => 'admin::attribute_group','key' => null,'type' => 0],
                 ['parent_id' => $idBlockSetting,'sort' => 40,'title' => 'admin.menu_titles.tax','icon' => 'far fa-calendar-minus','uri' => 'admin::tax','key' => null,'type' => 0],
+                // Address lists (shop-address): also a tab of the Configuration hub, but owners look
+                // for it next to the other shop settings; existing installs get it from the upgrade
+                // migration 2026_11_24_171107_add_address_mapping_admin_menu.
+                ['parent_id' => $idBlockSetting,'sort' => 30,'title' => 'admin.menu_titles.address_mapping','icon' => 'fas fa-map-marker-alt','uri' => 'admin::address_mapping','key' => null,'type' => 0],
                 // WHY: shop configuration is now a tab on the core Configuration hub
                 // (store_config) via SettingsHubTabRegistry (US-SADM-shop-config-into-hub,
                 // mod 20260906T104800). No standalone menu item — one entry point. Existing

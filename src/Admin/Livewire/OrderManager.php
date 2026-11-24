@@ -78,6 +78,14 @@ class OrderManager extends ResourcePanel
     /** @var array<string, mixed> Read-only snapshot of the editing order (detail view). */
     public array $order = [];
 
+    /**
+     * Codes of the address fields chosen from an address plugin's lists on the edit form,
+     * keyed by field name. Sent by the browser, so checked on the server when saving.
+     *
+     * @var array<string, string>
+     */
+    public array $addressCodes = [];
+
     /** @var array<int, array<string, mixed>> Order total breakdown rows (detail view). */
     public array $totals = [];
 
@@ -264,6 +272,7 @@ class OrderManager extends ResourcePanel
         $this->totals = [];
         $this->history = [];
         $this->items = [];
+        $this->addressCodes = [];
         $this->resetItemForm();
     }
 
@@ -278,6 +287,8 @@ class OrderManager extends ResourcePanel
     {
         $this->loadOrderState($model);
         $this->resetItemForm();
+        // WHY: codes picked while editing another order must not follow into this one.
+        $this->addressCodes = [];
 
         $form = [
             'status' => (int) $model->status,
@@ -661,6 +672,26 @@ class OrderManager extends ResourcePanel
 
         $clean = gp247_text_plain($this->form);
 
+        // Address plugin of the order's country (when one serves it): its names replace the
+        // typed ones and its codes are stored with the order; a value outside its list is
+        // reported on its field.
+        // WHY only when touched: an order placed before the plugin (or with free text) must
+        // stay editable — changing its comment must neither rewrite nor refuse its address.
+        $addressTouched = $this->addressTouched($order, $clean);
+        $addressMeta = $order->address_meta;
+        if ($addressTouched) {
+            $addressResolution = $this->resolveOrderAddress($clean);
+            if (!$addressResolution->passes()) {
+                foreach ($addressResolution->errors as $field => $message) {
+                    $this->addError('form.' . $field, $message);
+                }
+
+                return;
+            }
+            $clean = array_merge($clean, $addressResolution->values);
+            $addressMeta = $addressResolution->meta;
+        }
+
         $changes = [];
         foreach (self::HEADER_FIELDS as $field) {
             $new = (string) ($clean[$field] ?? '');
@@ -668,15 +699,22 @@ class OrderManager extends ResourcePanel
                 $changes[$field] = $new;
             }
         }
+        // WHY outside HEADER_FIELDS: the codes are derived from the address above, never
+        // typed, so they are written with it (one UPDATE) but not listed in the order history.
+        $write = $changes;
+        if ($addressTouched && $addressMeta != $order->address_meta && \GP247\Shop\Address\AddressService::make()->storesMeta()) {
+            $write['address_meta'] = $addressMeta;
+        }
+        $this->addressCodes = [];
 
-        if ($changes === []) {
+        if ($write === []) {
             $this->notify('success', gp247_language_render('action.update_success'));
 
             return;
         }
 
         $old = $order->only(array_keys($changes));
-        $order->update($changes);
+        $order->update($write);
 
         $status = (int) $order->fresh()->status;
         foreach ($changes as $field => $new) {
@@ -688,6 +726,54 @@ class OrderManager extends ResourcePanel
 
         $this->refreshOrder();
         $this->notify('success', gp247_language_render('action.update_success'));
+    }
+
+    /**
+     * Checks the address of the edit form against the address plugin of its country.
+     *
+     * @param array<string, mixed> $clean Cleaned form values.
+     * @return \GP247\Shop\Address\Data\AddressResolution
+     *
+     * @aidlc-unit shop-admin
+     * @aidlc-story US-SADM-address-city-district
+     * @aidlc-story US-shop-address-server-normalize
+     */
+    private function resolveOrderAddress(array $clean): \GP247\Shop\Address\Data\AddressResolution
+    {
+        $input = $clean;
+        foreach ($this->addressCodes as $field => $code) {
+            if (is_string($field) && is_scalar($code)) {
+                $input[$field . '_code'] = (string) $code;
+            }
+        }
+        $storeId = session('adminStoreId');
+        $country = (string) ($clean['country'] ?? '');
+
+        return \GP247\Shop\Address\AddressService::make()->normalize(
+            $storeId === null ? null : (string) $storeId,
+            $country !== '' ? $country : null,
+            $input,
+            \GP247\Shop\Address\AddressForm::CONTEXT_ADMIN_ORDER
+        );
+    }
+
+    /**
+     * @param \GP247\Shop\Models\ShopOrder $order Order being edited.
+     * @param array<string, mixed>          $clean Cleaned form values.
+     * @return bool True when an address field differs from the order, or a code was picked.
+     */
+    private function addressTouched($order, array $clean): bool
+    {
+        if ($this->addressCodes !== []) {
+            return true;
+        }
+        foreach (\GP247\Shop\Address\AddressForm::FIELD_ORDER as $field) {
+            if ((string) ($clean[$field] ?? '') !== (string) ($order->{$field} ?? '')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

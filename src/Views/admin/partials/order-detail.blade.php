@@ -95,73 +95,28 @@
                      then address2/3 and postcode are also editable so the admin can
                      correct any part of the shipping snapshot. Each part is gated by
                      its own config toggle. --}}
-                @if (gp247_config_admin('customer_city'))
-                <div>
-                    <label class="mb-1 block text-xs text-gray-500 dark:text-gray-400">{{ gp247_language_render('customer.city') }}</label>
-                    <input type="text" wire:model="form.city" data-testid="shop-admin-order-info-city" class="{{ $inputCls }}">
-                    @error('form.city')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
-                </div>
-                @endif
-
-                @if (gp247_config_admin('customer_district'))
-                <div>
-                    <label class="mb-1 block text-xs text-gray-500 dark:text-gray-400">{{ gp247_language_render('customer.district') }}</label>
-                    <input type="text" wire:model="form.district" data-testid="shop-admin-order-info-district" class="{{ $inputCls }}">
-                    @error('form.district')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
-                </div>
-                @endif
-                @if (gp247_config_admin('customer_ward'))
-                <div>
-                    <label class="mb-1 block text-xs text-gray-500 dark:text-gray-400">{{ gp247_language_render('customer.ward') }}</label>
-                    <input type="text" wire:model="form.ward" data-testid="shop-admin-order-info-ward" class="{{ $inputCls }}">
-                    @error('form.ward')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
-                </div>
-                @endif
-
-                @if (gp247_config_admin('customer_address1'))
-                <div>
-                    <label class="mb-1 block text-xs text-gray-500 dark:text-gray-400">{{ gp247_language_render('customer.address1') }}</label>
-                    <input type="text" wire:model="form.address1" data-testid="shop-admin-order-info-address1" class="{{ $inputCls }}">
-                    @error('form.address1')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
-                </div>
-                @endif
-
-                @if (gp247_config_admin('customer_address2'))
-                <div>
-                    <label class="mb-1 block text-xs text-gray-500 dark:text-gray-400">{{ gp247_language_render('customer.address2') }}</label>
-                    <input type="text" wire:model="form.address2" data-testid="shop-admin-order-info-address2" class="{{ $inputCls }}">
-                    @error('form.address2')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
-                </div>
-                @endif
-
-                @if (gp247_config_admin('customer_address3'))
-                <div>
-                    <label class="mb-1 block text-xs text-gray-500 dark:text-gray-400">{{ gp247_language_render('customer.address3') }}</label>
-                    <input type="text" wire:model="form.address3" data-testid="shop-admin-order-info-address3" class="{{ $inputCls }}">
-                    @error('form.address3')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
-                </div>
-                @endif
-
-                @if (gp247_config_admin('customer_postcode'))
-                <div>
-                    <label class="mb-1 block text-xs text-gray-500 dark:text-gray-400">{{ gp247_language_render('customer.postcode') }}</label>
-                    <input type="text" wire:model="form.postcode" data-testid="shop-admin-order-info-postcode" class="{{ $inputCls }}">
-                    @error('form.postcode')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
-                </div>
-                @endif
-
-                @if (gp247_config_admin('customer_country'))
-                <div>
-                    <label class="mb-1 block text-xs text-gray-500 dark:text-gray-400">{{ gp247_language_render('customer.country') }}</label>
-                    <select wire:model="form.country" data-testid="shop-admin-order-info-country" class="{{ $inputCls }}">
-                        <option value=""></option>
-                        @foreach ($this->countryOptions() as $code => $name)
-                            <option value="{{ $code }}">{{ $name }}</option>
-                        @endforeach
-                    </select>
-                    @error('form.country')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
-                </div>
-                @endif
+                {{-- Address block (QĐ-6): the shared block in Livewire mode — values through $wire (form.*), codes in addressCodes;
+                     dependent selects when an address plugin serves the order's country. --}}
+                @include('gp247-shop-front::common.shop_address_fields', [
+                    'addressBlock' => \GP247\Shop\Address\View\AddressBlock::for(
+                        ($form['country'] ?? '') !== '' ? $form['country'] : null,
+                        \GP247\Shop\Address\AddressForm::CONTEXT_ADMIN_ORDER,
+                        mode: \GP247\Shop\Address\View\AddressBlock::MODE_LIVEWIRE,
+                        wire: collect(\GP247\Shop\Address\AddressForm::FIELD_ORDER)->mapWithKeys(fn ($f) => [$f => 'form.' . $f])->all(),
+                        codesPath: 'addressCodes',
+                        storeId: session('adminStoreId') === null ? null : (string) session('adminStoreId'),
+                    ),
+                    'testidPrefix' => 'shop-admin-order-info',
+                    'wrapperClass' => 'space-y-3',
+                    'errorPrefix' => 'form.',
+                    'countries' => $this->countryOptions(),
+                    'inputClass' => $inputCls,
+                    'inputErrorClass' => 'border-red-400 dark:border-red-500',
+                    'labelClass' => 'mb-1 block text-xs text-gray-500 dark:text-gray-400',
+                    'errorClass' => 'mt-1 text-sm text-red-600',
+                    'hintClass' => 'mt-1 text-xs text-gray-500 dark:text-gray-400',
+                    'buttonClass' => 'rounded-lg border border-blue-600 bg-white px-3 py-2 text-sm text-blue-700 hover:bg-blue-50 dark:bg-gray-800 dark:text-blue-300',
+                ])
 
                 {{-- Payment / shipping method are shown only when methods exist,
                      matching the create-order screen (order-create.blade.php gates

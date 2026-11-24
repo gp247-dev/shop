@@ -41,6 +41,15 @@
                 @endphp
 
                 <div x-show="tab === '{{ $tab['id'] }}'" x-cloak>
+                    @if ($tab['id'] === 'customer' && \Illuminate\Support\Facades\Route::has('admin_address_mapping.index'))
+                        {{-- The address fields are switched on here; which of them a country's address
+                             plugin fills from a list is set on the Address lists screen (shop-address). --}}
+                        <div class="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-200">
+                            {{ gp247_language_render('admin.address_mapping.customer_tab_hint') }}
+                            <a href="{{ gp247_route_admin('admin_address_mapping.index') }}" class="font-medium text-blue-600 underline hover:text-blue-700"
+                                data-testid="shop-admin-config-customer-address-link">→ {{ gp247_language_render('admin.menu_titles.address_mapping') }}</a>
+                        </div>
+                    @endif
                     @if ($tab['id'] === 'sendmail')
                         {{-- Sendmail: status badge + note, then checkboxes --}}
                         <div class="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/40">

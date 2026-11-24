@@ -46,7 +46,7 @@ class ShopOrder extends Model
      *
      * @var array<string, string>
      */
-    protected $casts = ['exchange_rate' => 'float', 'stock_returned_at' => 'datetime'];
+    protected $casts = ['exchange_rate' => 'float', 'stock_returned_at' => 'datetime', 'address_meta' => 'array'];
 
     protected $gp247_customer_id = null;
     public $gp247_status = null;

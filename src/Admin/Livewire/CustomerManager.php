@@ -65,6 +65,17 @@ class CustomerManager extends ResourcePanel
     /** @var string|null Id of the address being edited (null = adding). */
     public ?string $editingAddressId = null;
 
+    /**
+     * Codes of the customer's address fields picked from an address plugin's lists (field =>
+     * code). Sent by the browser, so checked on save (AddressService, via the mapping helpers).
+     *
+     * @var array<string, string>
+     */
+    public array $addressCodes = [];
+
+    /** @var array<string, string> Same as $addressCodes, for the address-book form. */
+    public array $addressFormCodes = [];
+
     /** @var string|null The customer's default address id. */
     public ?string $defaultAddressId = null;
 
@@ -200,6 +211,7 @@ class CustomerManager extends ResourcePanel
         $this->initCustomFields();
         $this->addresses = [];
         $this->defaultAddressId = null;
+        $this->addressCodes = [];
         $this->resetAddressForm();
     }
 
@@ -215,6 +227,8 @@ class CustomerManager extends ResourcePanel
         $this->defaultAddressId = $model->address_id !== null ? (string) $model->address_id : null;
         $this->refreshAddresses();
         $this->resetAddressForm();
+        // WHY: codes picked for another customer must not follow into this one.
+        $this->addressCodes = [];
 
         $form = ['password' => '', 'password_confirmation' => '', 'status' => (int) $model->status];
         foreach (self::FIELDS as $field) {
@@ -323,11 +337,31 @@ class CustomerManager extends ResourcePanel
         foreach (self::FIELDS as $field) {
             $data[$field] = $this->form[$field] ?? '';
         }
+        $data += self::codeInputs($this->addressCodes);
         if ($this->editingId !== null) {
             $data['id'] = $this->editingId;
         }
 
         return $data;
+    }
+
+    /**
+     * `<field>_code` inputs for the mapping helpers, from a codes property (field => code).
+     * Only scalar values of known address fields pass; AddressService checks the codes.
+     *
+     * @param array<string, mixed> $codes Codes property.
+     * @return array<string, string>
+     */
+    private static function codeInputs(array $codes): array
+    {
+        $out = [];
+        foreach (\GP247\Shop\Address\AddressMapping::FIELDS as $field) {
+            if (isset($codes[$field]) && is_scalar($codes[$field]) && (string) $codes[$field] !== '') {
+                $out[$field . '_code'] = (string) $codes[$field];
+            }
+        }
+
+        return $out;
     }
 
     /**
@@ -361,6 +395,7 @@ class CustomerManager extends ResourcePanel
     private function resetAddressForm(): void
     {
         $this->editingAddressId = null;
+        $this->addressFormCodes = [];
         $form = [];
         foreach (self::ADDRESS_FIELDS as $field) {
             $form[$field] = '';
@@ -424,6 +459,7 @@ class CustomerManager extends ResourcePanel
         }
         $this->addressForm = $form;
         $this->editingAddressId = (string) $row->id;
+        $this->addressFormCodes = [];
     }
 
     /**
@@ -441,12 +477,15 @@ class CustomerManager extends ResourcePanel
             return;
         }
 
+        // WHY: errors of a previous attempt must not stay on screen once the address is fixed
+        // (only the address form's — the customer form keeps its own).
+        $this->resetErrorBag(array_map(static fn (string $field): string => 'addressForm.' . $field, self::ADDRESS_FIELDS));
         $data = [];
         foreach (self::ADDRESS_FIELDS as $field) {
             $data[$field] = $this->addressForm[$field] ?? '';
         }
 
-        $mapping = gp247_customer_address_mapping($data);
+        $mapping = gp247_customer_address_mapping($data + self::codeInputs($this->addressFormCodes));
         $validator = Validator::make($data, $mapping['validate'], $mapping['messages']);
         if ($validator->fails()) {
             $mapped = [];
@@ -459,9 +498,11 @@ class CustomerManager extends ResourcePanel
         $payload = gp247_text_plain($mapping['dataAddress']);
 
         if ($this->editingAddressId !== null) {
+            // WHY the model, not a query-builder update: address_meta is cast to JSON by the model.
             ShopCustomerAddress::where('id', $this->editingAddressId)
                 ->where('customer_id', $this->editingId)
-                ->update($payload);
+                ->first()
+                ?->update($payload);
         } else {
             $payload['customer_id'] = $this->editingId;
             ShopCustomerAddress::create($payload);

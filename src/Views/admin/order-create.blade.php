@@ -143,95 +143,28 @@
                         @endif
 
                         {{-- country — config-driven --}}
-                        @if (gp247_config_admin('customer_country'))
-                        <div>
-                            <label class="{{ $labelCls }}">{{ gp247_language_render('cart.country') }}{{ gp247_config_admin('customer_country_required') ? ' *' : '' }}</label>
-                            <select name="country" x-model="fields.country"
-                                {{ gp247_config_admin('customer_country_required') ? 'required' : '' }}
-                                class="{{ $inputCls }}">
-                                <option value="">—</option>
-                                @foreach ($countries as $code => $name)
-                                    <option value="{{ $code }}">{{ $name }}</option>
-                                @endforeach
-                            </select>
-                            @error('country')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
-                        </div>
-                        @endif
-
-                        {{-- city / district — config-driven; precede address1 to match
-                             the canonical address order (city -> district -> address1/2/3). --}}
-                        @if (gp247_config_admin('customer_city'))
-                        <div>
-                            <label class="{{ $labelCls }}">{{ gp247_language_render('cart.city') }}{{ gp247_config_admin('customer_city_required') ? ' *' : '' }}</label>
-                            <input type="text" name="city" x-model="fields.city"
-                                {{ gp247_config_admin('customer_city_required') ? 'required' : '' }}
-                                class="{{ $inputCls }}">
-                            @error('city')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
-                        </div>
-                        @endif
-
-                        @if (gp247_config_admin('customer_district'))
-                        <div>
-                            <label class="{{ $labelCls }}">{{ gp247_language_render('cart.district') }}{{ gp247_config_admin('customer_district_required') ? ' *' : '' }}</label>
-                            <input type="text" name="district" x-model="fields.district"
-                                {{ gp247_config_admin('customer_district_required') ? 'required' : '' }}
-                                class="{{ $inputCls }}">
-                            @error('district')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
-                        </div>
-                        @endif
-                        @if (gp247_config_admin('customer_ward'))
-                        <div>
-                            <label class="{{ $labelCls }}">{{ gp247_language_render('cart.ward') }}{{ gp247_config_admin('customer_ward_required') ? ' *' : '' }}</label>
-                            <input type="text" name="ward" x-model="fields.ward"
-                                {{ gp247_config_admin('customer_ward_required') ? 'required' : '' }}
-                                class="{{ $inputCls }}">
-                            @error('ward')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
-                        </div>
-                        @endif
-
-                        {{-- address1 — config-driven --}}
-                        @if (gp247_config_admin('customer_address1'))
-                        <div class="col-span-2">
-                            <label class="{{ $labelCls }}">{{ gp247_language_render('cart.address1') }}{{ gp247_config_admin('customer_address1_required') ? ' *' : '' }}</label>
-                            <input type="text" name="address1" x-model="fields.address1"
-                                {{ gp247_config_admin('customer_address1_required') ? 'required' : '' }}
-                                class="{{ $inputCls }}">
-                            @error('address1')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
-                        </div>
-                        @endif
-
-                        {{-- address2 — config-driven --}}
-                        @if (gp247_config_admin('customer_address2'))
-                        <div class="col-span-2">
-                            <label class="{{ $labelCls }}">{{ gp247_language_render('cart.address2') }}{{ gp247_config_admin('customer_address2_required') ? ' *' : '' }}</label>
-                            <input type="text" name="address2" x-model="fields.address2"
-                                {{ gp247_config_admin('customer_address2_required') ? 'required' : '' }}
-                                class="{{ $inputCls }}">
-                            @error('address2')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
-                        </div>
-                        @endif
-
-                        {{-- address3 — config-driven --}}
-                        @if (gp247_config_admin('customer_address3'))
-                        <div class="col-span-2">
-                            <label class="{{ $labelCls }}">{{ gp247_language_render('cart.address3') }}{{ gp247_config_admin('customer_address3_required') ? ' *' : '' }}</label>
-                            <input type="text" name="address3" x-model="fields.address3"
-                                {{ gp247_config_admin('customer_address3_required') ? 'required' : '' }}
-                                class="{{ $inputCls }}">
-                            @error('address3')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
-                        </div>
-                        @endif
-
-                        {{-- postcode — config-driven --}}
-                        @if (gp247_config_admin('customer_postcode'))
-                        <div>
-                            <label class="{{ $labelCls }}">{{ gp247_language_render('cart.postcode') }}{{ gp247_config_admin('customer_postcode_required') ? ' *' : '' }}</label>
-                            <input type="text" name="postcode" x-model="fields.postcode"
-                                {{ gp247_config_admin('customer_postcode_required') ? 'required' : '' }}
-                                class="{{ $inputCls }}">
-                            @error('postcode')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
-                        </div>
-                        @endif
+                        {{-- Address fields: the shared block bound to this page's Alpine state (fields.*), so picking a
+                             customer still fills them; dependent selects when an address plugin serves the country. --}}
+                        @include('gp247-shop-front::common.shop_address_fields', [
+                            'addressBlock' => \GP247\Shop\Address\View\AddressBlock::for(
+                                old('country') ?: null,
+                                \GP247\Shop\Address\AddressForm::CONTEXT_ADMIN_ORDER,
+                                mode: \GP247\Shop\Address\View\AddressBlock::MODE_ALPINE,
+                                wire: ['model' => 'fields'],
+                                storeId: session('adminStoreId') === null ? null : (string) session('adminStoreId'),
+                            ),
+                            'testidPrefix' => 'shop-admin-order-create',
+                            'wrapperClass' => 'col-span-2 grid grid-cols-2 gap-3',
+                            'wideFields' => ['address1', 'address2', 'address3'],
+                            'fieldWideClass' => 'col-span-2',
+                            'countries' => $countries,
+                            'inputClass' => $inputCls,
+                            'inputErrorClass' => 'border-red-400 dark:border-red-500',
+                            'labelClass' => $labelCls,
+                            'errorClass' => 'mt-1 text-xs text-red-600',
+                            'hintClass' => 'mt-1 text-xs text-gray-500 dark:text-gray-400',
+                            'buttonClass' => 'rounded-lg border border-blue-600 bg-white px-3 py-2 text-sm text-blue-700 hover:bg-blue-50 dark:bg-gray-800 dark:text-blue-300',
+                        ])
 
                         {{-- company — config-driven --}}
                         @if (gp247_config_admin('customer_company'))
@@ -356,7 +289,7 @@
                                 <div x-show="lineBlocked(item)" x-cloak
                                      :data-testid="'shop-admin-order-create-stock-warning-' + idx"
                                      class="mt-2 flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-600 dark:border-red-800 dark:bg-red-900/30 dark:text-red-400">
-                                    <i class="fas fa-triangle-exclamation"></i>
+                                    <i class="fas fa-exclamation-triangle"></i>
                                     <span x-text="overQtyMsg(item)"></span>
                                 </div>
 

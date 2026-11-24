@@ -55,46 +55,31 @@
             @endif
             {{-- City / district precede address1 to match the canonical address order
                  (city -> district -> address1/2/3). Both default OFF. --}}
-            @if (gp247_config_admin('customer_city'))
-                <x-gp247::input :label="gp247_language_render('customer.city')" name="addr_city"
-                    wire:model="addressForm.city" :error="$errors->first('addressForm.city')" />
-            @endif
-            @if (gp247_config_admin('customer_district'))
-                <x-gp247::input :label="gp247_language_render('customer.district')" name="addr_district"
-                    wire:model="addressForm.district" :error="$errors->first('addressForm.district')" />
-            @endif
-            @if (gp247_config_admin('customer_ward'))
-                <x-gp247::input :label="gp247_language_render('customer.ward')" name="addr_ward"
-                    wire:model="addressForm.ward" :error="$errors->first('addressForm.ward')" />
-            @endif
-            <x-gp247::input :label="gp247_language_render('customer.address1')" name="addr_address1"
-                wire:model="addressForm.address1" :error="$errors->first('addressForm.address1')" />
-            @if (gp247_config_admin('customer_address2'))
-                <x-gp247::input :label="gp247_language_render('customer.address2')" name="addr_address2"
-                    wire:model="addressForm.address2" :error="$errors->first('addressForm.address2')" />
-            @endif
-            @if (gp247_config_admin('customer_address3'))
-                <x-gp247::input :label="gp247_language_render('customer.address3')" name="addr_address3"
-                    wire:model="addressForm.address3" :error="$errors->first('addressForm.address3')" />
-            @endif
             @if (gp247_config_admin('customer_phone'))
                 <x-gp247::input :label="gp247_language_render('customer.phone')" name="addr_phone"
                     wire:model="addressForm.phone" :error="$errors->first('addressForm.phone')" />
             @endif
-            @if (gp247_config_admin('customer_country'))
-                <div>
-                    <label class="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-200">{{ gp247_language_render('customer.country') }}</label>
-                    <select wire:model="addressForm.country" class="{{ $inputCls }}">
-                        <option value="">--</option>
-                        @foreach ($this->countryOptions() as $code => $name)<option value="{{ $code }}">{{ $name }}</option>@endforeach
-                    </select>
-                    @error('addressForm.country')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
-                </div>
-            @endif
-            @if (gp247_config_admin('customer_postcode'))
-                <x-gp247::input :label="gp247_language_render('customer.postcode')" name="addr_postcode"
-                    wire:model="addressForm.postcode" :error="$errors->first('addressForm.postcode')" />
-            @endif
+            {{-- Address fields: the shared block in Livewire mode (addressForm.*, codes in addressFormCodes). --}}
+            @include('gp247-shop-front::common.shop_address_fields', [
+                'addressBlock' => \GP247\Shop\Address\View\AddressBlock::for(
+                    ($addressForm['country'] ?? '') !== '' ? $addressForm['country'] : null,
+                    \GP247\Shop\Address\AddressForm::CONTEXT_ADDRESS_BOOK,
+                    mode: \GP247\Shop\Address\View\AddressBlock::MODE_LIVEWIRE,
+                    wire: collect(\GP247\Shop\Address\AddressForm::FIELD_ORDER)->mapWithKeys(fn ($f) => [$f => 'addressForm.' . $f])->all(),
+                    codesPath: 'addressFormCodes',
+                    storeId: session('adminStoreId') === null ? null : (string) session('adminStoreId'),
+                ),
+                'testidPrefix' => 'shop-admin-customer-address',
+                'wrapperClass' => 'space-y-3',
+                'errorPrefix' => 'addressForm.',
+                'countries' => $this->countryOptions(),
+                'inputClass' => $inputCls,
+                'inputErrorClass' => 'border-red-400 dark:border-red-500',
+                'labelClass' => 'mb-2 block text-sm font-medium text-gray-700 dark:text-gray-200',
+                'errorClass' => 'mt-1 text-sm text-red-600',
+                'hintClass' => 'mt-1 text-xs text-gray-500 dark:text-gray-400',
+                'buttonClass' => 'rounded-lg border border-blue-600 bg-white px-3 py-2 text-sm text-blue-700 hover:bg-blue-50 dark:bg-gray-800 dark:text-blue-300',
+            ])
             <div class="flex items-center gap-2">
                 <x-gp247::button type="button" wire:click="saveAddress" wire:loading.attr="disabled">
                     <i class="fas fa-save"></i> {{ gp247_language_render($editingAddressId ? 'admin.update' : 'customer.address_add') }}

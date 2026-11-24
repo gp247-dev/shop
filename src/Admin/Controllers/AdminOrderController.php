@@ -166,42 +166,16 @@ class AdminOrderController extends RootAdminController
                 $validate['last_name'] = config('validation.customer.last_name_null', 'nullable|string|max:100');
             }
         }
-        // City / district precede address1 (canonical order); both default OFF.
-        if (gp247_config_admin('customer_city')) {
-            if (gp247_config_admin('customer_city_required')) {
-                $validate['city'] = config('validation.customer.city_required', 'required|string|max:100');
-            } else {
-                $validate['city'] = config('validation.customer.city_null', 'nullable|string|max:100');
-            }
-        }
-        if (gp247_config_admin('customer_district')) {
-            if (gp247_config_admin('customer_district_required')) {
-                $validate['district'] = config('validation.customer.district_required', 'required|string|max:100');
-            } else {
-                $validate['district'] = config('validation.customer.district_null', 'nullable|string|max:100');
-            }
-        }
-        if (gp247_config_admin('customer_address1')) {
-            if (gp247_config_admin('customer_address1_required')) {
-                $validate['address1'] = config('validation.customer.address1_required', 'required|string|max:100');
-            } else {
-                $validate['address1'] = config('validation.customer.address1_null', 'nullable|string|max:100');
-            }
-        }
-        if (gp247_config_admin('customer_address2')) {
-            if (gp247_config_admin('customer_address2_required')) {
-                $validate['address2'] = config('validation.customer.address2_required', 'required|string|max:100');
-            } else {
-                $validate['address2'] = config('validation.customer.address2_null', 'nullable|string|max:100');
-            }
-        }
-        if (gp247_config_admin('customer_address3')) {
-            if (gp247_config_admin('customer_address3_required')) {
-                $validate['address3'] = config('validation.customer.address3_required', 'required|string|max:100');
-            } else {
-                $validate['address3'] = config('validation.customer.address3_null', 'nullable|string|max:100');
-            }
-        }
+        // Address fields: shown / required / rules come from the one resolver every address
+        // form shares (AddressForm), read for the store this admin works in — the ward is
+        // validated like the others and the country must be one of the shop's.
+        $adminStoreId = session('adminStoreId');
+        $addressSet = \GP247\Shop\Address\AddressForm::make()->resolve(
+            $adminStoreId === null ? null : (string) $adminStoreId,
+            isset($data['country']) && is_string($data['country']) ? $data['country'] : null,
+            \GP247\Shop\Address\AddressForm::CONTEXT_ADMIN_ORDER
+        );
+        $validate = array_merge($validate, $addressSet->rulesFor(['city', 'district', 'ward', 'address1', 'address2', 'address3']));
         if (gp247_config_admin('customer_phone')) {
             if (gp247_config_admin('customer_phone_required')) {
                 $validate['phone'] = config('validation.customer.phone_required', 'required|regex:/^0[^0][0-9\-]{6,12}$/');
@@ -209,20 +183,7 @@ class AdminOrderController extends RootAdminController
                 $validate['phone'] = config('validation.customer.phone_null', 'nullable|regex:/^0[^0][0-9\-]{6,12}$/');
             }
         }
-        if (gp247_config_admin('customer_country')) {
-            if (gp247_config_admin('customer_country_required')) {
-                $validate['country'] = config('validation.customer.country_required', 'required|string|min:2');
-            } else {
-                $validate['country'] = config('validation.customer.country_null', 'nullable|string|min:2');
-            }
-        }
-        if (gp247_config_admin('customer_postcode')) {
-            if (gp247_config_admin('customer_postcode_required')) {
-                $validate['postcode'] = config('validation.customer.postcode_required', 'required|min:5');
-            } else {
-                $validate['postcode'] = config('validation.customer.postcode_null', 'nullable|min:5');
-            }
-        }
+        $validate = array_merge($validate, $addressSet->rulesFor(['country', 'postcode']));
         if (gp247_config_admin('customer_company')) {
             if (gp247_config_admin('customer_company_required')) {
                 $validate['company'] = config('validation.customer.company_required', 'required|string|max:100');
@@ -273,6 +234,17 @@ class AdminOrderController extends RootAdminController
                 ->withInput();
         }
 
+        // Address plugin of the country (when one serves it): its names replace the typed
+        // ones and its codes are stored with the order; a value outside its list goes back
+        // to the form as a field error.
+        $addressResolution = \GP247\Shop\Address\AddressService::make()->normalizeSet($addressSet, $data);
+        if (!$addressResolution->passes()) {
+            return redirect()->back()
+                ->withErrors($addressResolution->errors)
+                ->withInput();
+        }
+        $data = array_merge($data, $addressResolution->values);
+
         // Security: a store-scoped admin may only create orders for THEIR store — force
         // store_id to the session store, ignoring any posted value (defence against a
         // forged store_id). The root admin keeps the store chosen on the form.
@@ -311,6 +283,9 @@ class AdminOrderController extends RootAdminController
             // modification 20260827T142602).
             'store_id'        => (string) ($data['store_id'] ?? GP247_STORE_ID_ROOT),
         ];
+        if ($addressResolution->meta !== null && \GP247\Shop\Address\AddressService::make()->storesMeta()) {
+            $dataCreate['address_meta'] = $addressResolution->meta;
+        }
         $dataCreate = gp247_text_plain($dataCreate, [], true);
         // WHY: create order + line items + totals and decrement stock atomically,
         // parity with the storefront ShopOrder::createOrder (US-SADM-order-stock-parity,

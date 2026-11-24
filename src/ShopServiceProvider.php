@@ -186,6 +186,13 @@ class ShopServiceProvider extends ServiceProvider
         $this->app->bindIf(\GP247\Shop\Services\Cart\CartStore::class, \GP247\Shop\Services\Cart\SessionCartStore::class);
         // Checkout state of the web (session keys read by plugins); bindIf so it can be replaced.
         $this->app->bindIf(\GP247\Shop\Services\Checkout\CheckoutState::class, \GP247\Shop\Services\Checkout\SessionCheckoutState::class);
+        // Address providers of country plugins: one registry / resolver / service per request,
+        // so a provider is instantiated and asked for its schema once. scoped(), not singleton():
+        // they memoise which plugins are enabled, so a long-lived worker must not keep them
+        // (ADR shop-address_provider-capability-contract).
+        $this->app->scoped(\GP247\Shop\Address\AddressProviderRegistry::class);
+        $this->app->scoped(\GP247\Shop\Address\AddressForm::class);
+        $this->app->scoped(\GP247\Shop\Address\AddressService::class);
         if (file_exists(__DIR__.'/Library/Const.php')) {
             require_once(__DIR__.'/Library/Const.php');
         }
@@ -469,6 +476,16 @@ class ShopServiceProvider extends ServiceProvider
             component: 'gp247-shop-admin::shop-config-form',
             authUri: $prefix . '/shop_config',
             order: 10,
+        );
+
+        // Address settings: which shop address field each address plugin feeds (shop-address).
+        // Same permission as the shop configuration.
+        \GP247\Core\AdminShell\Support\SettingsHubTabRegistry::register(
+            key: 'address',
+            label: 'admin.address_mapping.tab',
+            component: 'gp247-shop-admin::address-mapping-form',
+            authUri: $prefix . '/shop_config',
+            order: 11,
         );
     }
 

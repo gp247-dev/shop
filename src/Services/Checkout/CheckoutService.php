@@ -440,6 +440,13 @@ class CheckoutService
                 $dataOrder[$field] = $shippingAddress[$field];
             }
         }
+        // Codes of the address confirmed by the address plugin at the address step: the
+        // order keeps its own copy (snapshot). Guarded like `channel` for a site that has
+        // not run gp247:update yet.
+        if (!empty($shippingAddress['address_meta']) && is_array($shippingAddress['address_meta'])
+            && \GP247\Shop\Address\AddressService::make()->storesMeta()) {
+            $dataOrder['address_meta'] = $shippingAddress['address_meta'];
+        }
 
         return $dataOrder;
     }
@@ -494,8 +501,13 @@ class CheckoutService
             'address1', 'address2', 'address3', 'country', 'phone'] as $field) {
             $address[$field] = $shippingAddress[$field] ?? '';
         }
+        $address = gp247_text_plain($address);
+        if (!empty($shippingAddress['address_meta']) && is_array($shippingAddress['address_meta'])
+            && \GP247\Shop\Address\AddressService::make()->storesMeta()) {
+            $address['address_meta'] = $shippingAddress['address_meta'];
+        }
 
-        ShopCustomer::find($customerId)->addresses()->save(new ShopCustomerAddress(gp247_text_plain($address)));
+        ShopCustomer::find($customerId)->addresses()->save(new ShopCustomerAddress($address));
     }
 
     /**
