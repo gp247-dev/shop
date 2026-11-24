@@ -52,6 +52,30 @@ class AddressEndpointsTest extends TestCase
         $this->assertArrayNotHasKey('address2', $fields->all());
     }
 
+    public function test_the_schema_answers_in_the_language_of_the_page_not_of_the_session(): void
+    {
+        session(['locale' => 'vi']);
+        $label = function (string $lang): string {
+            $fields = $this->getJson(route('address.schema', ['country' => 'VN', 'context' => 'customer_insert', 'lang' => $lang]))
+                ->assertOk()->json('fields');
+
+            return (string) collect($fields)->keyBy('name')['district']['label'];
+        };
+        $expected = function (string $lang): string {
+            app()->setLocale($lang);
+
+            return (string) gp247_language_render('customer.district');
+        };
+
+        $en = $label('en');
+        $vi = $label('vi');
+        $this->assertSame($expected('en'), $en);
+        $this->assertSame($expected('vi'), $vi);
+        $this->assertNotSame($en, $vi);
+        // An unknown language is ignored: the session's language answers.
+        $this->assertSame($vi, $label('xx'));
+    }
+
     public function test_the_admin_forms_can_ask_for_their_schema_too(): void
     {
         $this->getJson(route('address.schema', ['country' => 'VN', 'context' => 'admin_order']))

@@ -193,6 +193,9 @@ window.gp247Address = function (cfg) {
 
         // --- data ----------------------------------------------------------------------------------
         async getJson(url, params) {
+            // WHY lang: labels must follow the page, not the session (another tab may have switched it);
+            // it also keeps the browser cache of each language apart.
+            if (cfg.locale) { params = Object.assign({}, params, { lang: cfg.locale }); }
             const query = new URLSearchParams(params).toString();
             const response = await fetch(url + (url.includes('?') ? '&' : '?') + query, {
                 headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },

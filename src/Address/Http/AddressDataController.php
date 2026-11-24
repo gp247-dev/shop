@@ -46,8 +46,10 @@ class AddressDataController extends Controller
      */
     public function schema(Request $request): JsonResponse
     {
+        $this->applyLocale($request);
         $input = $this->validated($request, [
             'country' => ['required', 'string', 'regex:/^[A-Za-z]{2}$/'],
+            'lang' => ['nullable', 'string', 'max:10'],
             'context' => ['nullable', 'string', 'in:' . implode(',', self::CONTEXTS)],
         ]);
         if ($input instanceof JsonResponse) {
@@ -66,8 +68,10 @@ class AddressDataController extends Controller
      */
     public function options(Request $request): JsonResponse
     {
+        $this->applyLocale($request);
         $input = $this->validated($request, [
             'country' => ['required', 'string', 'regex:/^[A-Za-z]{2}$/'],
+            'lang' => ['nullable', 'string', 'max:10'],
             'component' => ['required', 'string', 'max:40', 'regex:/^[A-Za-z0-9_\-]+$/'],
             'parent' => ['nullable', 'string', 'max:64', 'regex:/^[A-Za-z0-9_.\-]+$/'],
         ]);
@@ -88,8 +92,10 @@ class AddressDataController extends Controller
      */
     public function lookup(Request $request): JsonResponse
     {
+        $this->applyLocale($request);
         $input = $this->validated($request, [
             'country' => ['required', 'string', 'regex:/^[A-Za-z]{2}$/'],
+            'lang' => ['nullable', 'string', 'max:10'],
             'postcode' => ['required', 'string', 'max:16', 'regex:/^[A-Za-z0-9 \-]+$/'],
         ]);
         if ($input instanceof JsonResponse) {
@@ -97,6 +103,23 @@ class AddressDataController extends Controller
         }
 
         return $this->json(AddressService::make()->lookup(null, $input['country'], $input['postcode']), 'no-store');
+    }
+
+    /**
+     * Answers in the language of the page that asks (`lang`), not the session's: the endpoints have
+     * no language prefix, and a shopper may have switched language in another tab. Only an active
+     * language is used, and only for this request (the session is left as it is).
+     *
+     * @param Request $request Request.
+     * @return void
+     */
+    private function applyLocale(Request $request): void
+    {
+        $lang = $request->query('lang');
+        if (is_string($lang) && $lang !== '' && function_exists('gp247_language_all')
+            && array_key_exists($lang, gp247_language_all()->toArray())) {
+            app()->setLocale($lang);
+        }
     }
 
     /**

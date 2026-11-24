@@ -174,6 +174,8 @@ final class AddressBlock
             'wire' => $this->mode === self::MODE_LIVEWIRE ? $this->wire : [],
             'model' => $this->mode === self::MODE_ALPINE ? (string) ($this->wire['model'] ?? '') : null,
             'codesPath' => $this->codesPath,
+            // Language of the page: the endpoints answer in it (their URLs carry no language prefix).
+            'locale' => app()->getLocale(),
             'urls' => [
                 'schema' => self::url('address.schema'),
                 'options' => self::url('address.options'),
