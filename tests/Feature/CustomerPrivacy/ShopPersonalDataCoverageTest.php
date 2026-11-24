@@ -26,18 +26,13 @@ class ShopPersonalDataCoverageTest extends TestCase
     /** Tables of gp247/shop (logical names). */
     private const PREFIXES = ['shop_', 'payment_'];
 
-    /** @var array<string, string> Table => why it holds no customer data. */
-    private const NOT_CUSTOMER_DATA = [
-        'shop_supplier' => 'suppliers of the shop, not customers',
-        'shop_product_description' => 'product texts written by the shop',
-    ];
 
     public function test_every_shop_table_with_personal_looking_columns_is_declared_or_explained(): void
     {
         $declared = array_map(fn ($s) => $s->table, PersonalDataRegistry::sources());
         $missing = [];
         foreach ($this->tablesWithPersonalColumns() as $table => $columns) {
-            if (!in_array($table, $declared, true) && !array_key_exists($table, self::NOT_CUSTOMER_DATA)) {
+            if (!in_array($table, $declared, true) && !array_key_exists($table, \GP247\Core\PersonalData\Application\PersonalDataRegistry::notCustomerTables())) {
                 $missing[] = $table . ' (' . implode(', ', $columns) . ')';
             }
         }

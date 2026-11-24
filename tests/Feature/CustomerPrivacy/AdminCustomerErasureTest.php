@@ -89,6 +89,19 @@ class AdminCustomerErasureTest extends TestCase
         $this->assertSame(0, DB::connection(GP247_DB_CONNECTION)->table('personal_access_tokens')->where('tokenable_id', $ids['customer'])->count());
     }
 
+    public function test_deleting_a_customer_is_recorded_as_a_completed_request_of_an_administrator(): void
+    {
+        $ids = $this->seedCustomer('an.request-' . uniqid() . '@example.com');
+
+        $this->eraseOnScreen($ids['customer'])->assertSet('erasureStatus', 'done');
+
+        $request = $this->table('personal_data_request')->where('customer_id', $ids['customer'])->first();
+        $this->assertNotNull($request);
+        $this->assertSame('admin', $request->source);
+        $this->assertSame('completed', $request->status);
+        $this->assertNotNull($request->erasure_id);
+    }
+
     public function test_orders_are_kept_for_the_accounts_without_name_contact_or_address(): void
     {
         $email = 'an.keep-' . uniqid() . '@example.com';

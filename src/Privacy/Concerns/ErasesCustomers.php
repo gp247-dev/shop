@@ -4,6 +4,8 @@ namespace GP247\Shop\Privacy\Concerns;
 
 use GP247\Core\PersonalData\Application\ErasureService;
 use GP247\Core\PersonalData\Application\ErasureStepUp;
+use GP247\Core\PersonalData\Application\Requests\PrivacyRequests;
+use GP247\Core\PersonalData\Application\Requests\RequestScheduler;
 use GP247\Core\PersonalData\Application\SubjectLookup;
 use GP247\Core\PersonalData\Domain\DataSubject;
 use GP247\Core\PersonalData\Infrastructure\JobRepository;
@@ -56,7 +58,7 @@ trait ErasesCustomers
         if ($customer === null) {
             return;
         }
-        if (!ErasureService::ready()) {
+        if (!ErasureService::ready() || !RequestScheduler::ready()) {
             $this->notify('error', gp247_language_render('admin.personal_data.not_ready'));
 
             return;
@@ -91,19 +93,25 @@ trait ErasesCustomers
             return;
         }
         $admin = function_exists('admin') ? admin()->user() : null;
-        $outcome = app(ErasureService::class)->request(
-            DataSubject::customer((string) $customer->id),
-            'admin',
-            'admin',
-            $admin === null ? null : (string) $admin->getAuthIdentifier(),
+        // Through a personal data request (source "admin", run at once), so the erasure is in the
+        // request history like every other one (personal-data-requests_request-model).
+        $result = app(PrivacyRequests::class)->adminErase(
+            (string) $customer->id,
+            true,
+            (string) ($customer->store_id ?? $this->storeContext()),
+            ['type' => 'admin', 'id' => $admin === null ? null : (string) $admin->getAuthIdentifier()],
         );
-        if ($outcome->isBlocked()) {
-            $this->erasureBlockers = $outcome->blockers;
+        if (isset($result['blockers']) && $result['blockers'] !== []) {
+            $this->erasureBlockers = $result['blockers'];
 
             return;
         }
-        $this->erasureJobId = $outcome->jobId;
-        $this->afterSlice($outcome->status);
+        $this->erasureJobId = isset($result['job_id']) ? (string) $result['job_id'] : null;
+        $status = (string) ($result['status'] ?? '');
+        if ($this->erasureJobId !== null && !in_array($status, [JobRepository::QUEUED, JobRepository::RUNNING, JobRepository::DONE, JobRepository::FAILED], true)) {
+            $status = app(ErasureService::class)->status($this->erasureJobId);
+        }
+        $this->afterSlice($status);
     }
 
     /**

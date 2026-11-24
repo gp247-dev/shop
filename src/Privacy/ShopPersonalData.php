@@ -31,6 +31,12 @@ final class ShopPersonalData
 {
     public const OWNER = 'gp247/shop';
 
+    /** @var array<string, string> Shop tables that look personal by column names but hold no customer data. */
+    public const NOT_CUSTOMER_DATA = [
+        'shop_supplier' => 'suppliers of the shop, not customers',
+        'shop_product_description' => 'product texts written by the shop',
+    ];
+
     /** Address and contact columns of an order, emptied on erasure (names get the marker). */
     private const ORDER_CONTACT = [
         'email', 'phone', 'company', 'country', 'city', 'district', 'ward',
@@ -56,6 +62,37 @@ final class ShopPersonalData
             PersonalDataRegistry::declare($source);
         }
         PersonalDataRegistry::blocker(new OpenOrderBlocker());
+        // WHY method_exists: the core of a site updated in two steps may not have these yet.
+        if (method_exists(PersonalDataRegistry::class, 'notCustomerData')) {
+            foreach (self::NOT_CUSTOMER_DATA as $table => $reason) {
+                PersonalDataRegistry::notCustomerData($table, $reason);
+            }
+        }
+        if (method_exists(PersonalDataRegistry::class, 'customerResolver')) {
+            PersonalDataRegistry::customerResolver(static fn (string $idOrEmail): ?array => self::findCustomer($idOrEmail));
+        }
+    }
+
+    /**
+     * @param string $idOrEmail
+     * @return array{id: string, email: string|null, name: string|null, store_id: string|null}|null
+     */
+    public static function findCustomer(string $idOrEmail): ?array
+    {
+        $value = trim($idOrEmail);
+        $customer = str_contains($value, '@')
+            ? ShopCustomer::query()->where('email', mb_strtolower($value))->first()
+            : ShopCustomer::query()->where('id', $value)->first();
+        if ($customer === null) {
+            return null;
+        }
+
+        return [
+            'id' => (string) $customer->id,
+            'email' => $customer->email === null ? null : (string) $customer->email,
+            'name' => trim((string) $customer->first_name . ' ' . (string) $customer->last_name) ?: null,
+            'store_id' => $customer->store_id === null ? null : (string) $customer->store_id,
+        ];
     }
 
     /**
