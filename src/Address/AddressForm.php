@@ -88,11 +88,16 @@ class AddressForm
         $componentOf = $schema === null ? [] : $this->usableComponents($mapping['fields'], $switches, $schema);
         $fieldOf = array_flip($componentOf);
 
+        $postcodeFirst = $switches['postcode']['show'] && $this->looksUpPostcodes($storeId, $served, $registry);
         $fields = [];
         $rules = [];
         foreach (self::FIELD_ORDER as $position => $name) {
             $component = isset($componentOf[$name]) ? $schema->component($componentOf[$name]) : null;
-            $order = ($name === 'country' && $served !== []) ? -1 : $position;
+            $order = match (true) {
+                $name === 'country' && $served !== [] => -2,
+                $name === 'postcode' && $postcodeFirst => -1,
+                default => $position,
+            };
             $fields[] = new AddressField(
                 name: $name,
                 show: $switches[$name]['show'],
@@ -101,7 +106,11 @@ class AddressForm
                 input: $this->inputOf($component, $providerKey, $registry),
                 component: $component?->key,
                 parentField: ($component !== null && $component->parent !== null) ? ($fieldOf[$component->parent] ?? null) : null,
-                editable: $component === null || ($component->kind !== AddressComponent::KIND_LIST && $mapping['fields'][$name]['editable']),
+                // WHY lookup always: the shopper types the postcode; "editable" only says whether a
+                // field the lookup filled may be changed afterwards.
+                editable: $component === null
+                    || $component->kind === AddressComponent::KIND_LOOKUP
+                    || ($component->kind !== AddressComponent::KIND_LIST && $mapping['fields'][$name]['editable']),
                 order: $order,
             );
             if ($switches[$name]['show']) {
@@ -228,6 +237,33 @@ class AddressForm
      * @param AddressProviderRegistry $registry    Registry.
      * @return string AddressField::INPUT_*.
      */
+    /**
+     * Whether a country the store serves fills its address from the postcode — then the
+     * postcode goes right after the country, so the shopper types it before the fields it fills.
+     * Decided for the store, not for the country picked: the form is printed once and the
+     * browser cannot move a field when the shopper changes country.
+     *
+     * @param string|null             $storeId  Store whose settings apply.
+     * @param array<int, string>      $served   Countries an address plugin serves for the store.
+     * @param AddressProviderRegistry $registry Provider registry.
+     * @return bool
+     */
+    private function looksUpPostcodes(?string $storeId, array $served, AddressProviderRegistry $registry): bool
+    {
+        foreach ($served as $country) {
+            [$key, $schema] = $this->providerFor($storeId, (string) $country);
+            if ($key === null || $schema === null || !$registry->supports((string) $key, AddressProvider::CAP_POSTCODE)) {
+                continue;
+            }
+            $component = (new AddressMapping())->effective($storeId, $schema, (string) $key)['fields']['postcode']['component'] ?? null;
+            if (is_string($component) && $schema->component($component)?->kind === AddressComponent::KIND_LOOKUP) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function inputOf(?AddressComponent $component, ?string $providerKey, AddressProviderRegistry $registry): string
     {
         if ($component === null || $providerKey === null) {

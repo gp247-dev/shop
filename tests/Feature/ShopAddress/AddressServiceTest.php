@@ -208,6 +208,43 @@ class AddressServiceTest extends TestCase
         $this->assertSame(['city' => 'Springfield', 'address_meta' => null], $resolution->applyTo(['city' => 'Springfield']));
     }
 
+    public function test_a_postcode_the_plugin_refuses_is_reported_on_the_postcode_field(): void
+    {
+        $resolution = AddressService::make()->normalize(null, 'JP', [
+            'postcode' => '100-0001', 'city' => '大阪府', 'city_code' => '27',
+        ], AddressForm::CONTEXT_CHECKOUT);
+
+        $this->assertFalse($resolution->passes());
+        $this->assertSame(['postcode'], array_keys($resolution->errors));
+        $this->assertNotSame('', $resolution->errors['postcode']);
+        $this->assertNull($resolution->meta);
+    }
+
+    public function test_when_matching_is_not_enforced_a_refused_postcode_is_kept_without_its_code(): void
+    {
+        $this->configureAddress(['customer_city' => '1', 'customer_postcode' => '1', 'customer_country' => '1',
+            'address_mapping_JP' => json_encode(['provider' => 'FakeAddress', 'strict' => false,
+                'fields' => ['postcode' => ['component' => 'postcode'], 'city' => ['component' => 'prefecture']]])]);
+
+        $resolution = AddressService::make()->normalize(null, 'JP', [
+            'postcode' => '100-0001', 'city' => '大阪府', 'city_code' => '27',
+        ], AddressForm::CONTEXT_CHECKOUT);
+
+        $this->assertTrue($resolution->passes());
+        $this->assertSame(['prefecture'], array_keys($resolution->meta['components']));
+    }
+
+    public function test_a_postcode_the_plugin_does_not_know_is_kept_as_typed(): void
+    {
+        // A postcode missing from the plugin's data may be newer than the data: not refused.
+        $resolution = AddressService::make()->normalize(null, 'JP', [
+            'postcode' => '999-9999', 'city' => '東京都', 'city_code' => '13',
+        ], AddressForm::CONTEXT_CHECKOUT);
+
+        $this->assertTrue($resolution->passes());
+        $this->assertSame(['prefecture'], array_keys($resolution->meta['components']));
+    }
+
     public function test_a_prefilled_field_the_shopper_may_edit_keeps_what_they_typed(): void
     {
         $this->configureAddress(['customer_city' => '1', 'customer_district' => '1', 'customer_postcode' => '1', 'customer_country' => '1']);

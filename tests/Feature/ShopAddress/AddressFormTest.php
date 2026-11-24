@@ -21,6 +21,7 @@ use PHPUnit\Framework\Attributes\Group;
  * @aidlc-story US-shop-address-dependent-select
  * @aidlc-story US-shop-address-field-mapping
  * @aidlc-story US-shop-address-free-text-fallback
+ * @aidlc-story US-shop-address-postcode-lookup
  */
 #[Group('shop-address')]
 class AddressFormTest extends TestCase
@@ -133,6 +134,41 @@ class AddressFormTest extends TestCase
         $this->assertFalse($set->field('district')->editable);
         $this->assertSame('town', $set->field('address1')->component);
         $this->assertTrue($set->field('address1')->editable);
+    }
+
+    public function test_the_postcode_comes_right_after_the_country_when_a_country_of_the_shop_looks_postcodes_up(): void
+    {
+        FakeAddressRegistry::bind(['FakeAddress' => new FakeAddressProvider()], ['FakeAddress' => ['VN', 'JP']]);
+        $this->configureAddress(['customer_city' => '1', 'customer_postcode' => '1', 'customer_country' => '1']);
+
+        // Decided for the shop, not for the country picked: the block is printed once.
+        foreach (['JP', 'VN', null] as $country) {
+            $order = array_keys(AddressForm::make()->resolve(null, $country, AddressForm::CONTEXT_CHECKOUT)->visible());
+            $this->assertSame(['country', 'postcode', 'city'], array_slice($order, 0, 3), 'country ' . var_export($country, true));
+        }
+    }
+
+    public function test_the_shopper_can_always_type_the_postcode_that_is_looked_up(): void
+    {
+        FakeAddressRegistry::bind(['FakeAddress' => new FakeAddressProvider()], ['FakeAddress' => ['JP']]);
+        $this->configureAddress(['customer_city' => '1', 'customer_postcode' => '1', 'customer_country' => '1']);
+
+        $postcode = AddressForm::make()->resolve(null, 'JP', AddressForm::CONTEXT_CHECKOUT)->field('postcode');
+
+        $this->assertSame(AddressField::INPUT_LOOKUP, $postcode->input);
+        // The "may edit after it is filled in" switch is about fields a lookup fills, not the key typed.
+        $this->assertTrue($postcode->editable);
+    }
+
+    public function test_without_a_postcode_lookup_the_postcode_keeps_its_place_at_the_end(): void
+    {
+        FakeAddressRegistry::bind(['FakeAddress' => new FakeAddressProvider()], ['FakeAddress' => ['VN']]);
+        $this->configureAddress(['customer_city' => '1', 'customer_postcode' => '1', 'customer_country' => '1']);
+
+        $order = array_keys(AddressForm::make()->resolve(null, 'VN', AddressForm::CONTEXT_CHECKOUT)->visible());
+
+        $this->assertSame('country', $order[0]);
+        $this->assertSame('postcode', end($order));
     }
 
     public function test_a_field_switched_off_is_never_shown_even_when_the_plugin_maps_it(): void
