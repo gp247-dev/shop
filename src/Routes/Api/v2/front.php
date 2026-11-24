@@ -5,6 +5,7 @@ use GP247\Shop\Api\V2\AccountController;
 use GP247\Shop\Api\V2\AddressController;
 use GP247\Shop\Api\V2\CatalogController;
 use GP247\Shop\Api\V2\MemberController;
+use GP247\Shop\Api\V2\PrivacyController;
 use Illuminate\Support\Facades\Route;
 
 // REST API v2 — public catalog + customer account (US-CMP-api-v2-contract) and the
@@ -49,6 +50,12 @@ Route::group([
         Route::put('member/profile', $account.'@updateProfile');
         Route::put('member/password', $account.'@changePassword');
         Route::post('member/email/verify', $account.'@resendVerification')->middleware('throttle:gp247-api-account');
+
+        // The customer's data package (US-customer-privacy-api, US-customer-privacy-self-export).
+        $privacy = gp247_namespace(PrivacyController::class);
+        Route::post('member/export', $privacy.'@store')->middleware('throttle:gp247-api-account');
+        Route::get('member/export/{id}', $privacy.'@show');
+        Route::get('member/export/{id}/download', $privacy.'@download');
 
         Route::get('member/address/list', $address.'@index');
         Route::post('member/address', $address.'@store');

@@ -1,18 +1,20 @@
 <?php
 
 use GP247\Shop\Controllers\ShopAccountController;
+use GP247\Shop\Controllers\ShopPrivacyController;
 
 $suffix = GP247_SUFFIX_URL;
 
 $prefixCustomer = config('gp247-config.shop.route.GP247_PREFIX_MEMBER') ?? 'customer';
 $customerController = gp247_namespace(ShopAccountController::class);
+$privacyController = gp247_namespace(ShopPrivacyController::class);
 
 Route::group(
     [
         'prefix' => $prefixCustomer,
         'middleware' => ['customer']
     ],
-    function ($router) use ($suffix, $customerController) {
+    function ($router) use ($suffix, $customerController, $privacyController) {
         $prefixCustomerOrderList    = config('gp247.cart.route.GP247_PREFIX_MEMBER_ORDER_LIST')??'order-list';
         $prefixCustomerOrderDetail  = config('gp247.cart.route.GP247_PREFIX_MEMBER_ORDER_DETAIL')??'order-detail';
         $prefixCustomerAddresList   = config('gp247.cart.route.GP247_PREFIX_MEMBER_ADDRESS_LIST')??'address-list';
@@ -46,6 +48,17 @@ Route::group(
             ->name('customer.post_change_infomation');
         $router->get('/address_detail', $customerController.'@getAddress')
             ->name('customer.address_detail');
+
+        // "My data": the customer downloads everything the shop holds about them (US-customer-privacy-self-export).
+        $router->get('/privacy', $privacyController.'@index')
+            ->name('customer.privacy');
+        $router->post('/privacy/export', $privacyController.'@export')
+            ->middleware('throttle:6,1')
+            ->name('customer.privacy_export');
+        $router->get('/privacy/export/status', $privacyController.'@status')
+            ->name('customer.privacy_export_status');
+        $router->post('/privacy/export/download', $privacyController.'@download')
+            ->name('customer.privacy_export_download');
 
         // The Email Verification Notice
         $router->get('/email/verify', $customerController.'@verification')
