@@ -51,6 +51,7 @@ class MemberController extends MemberAuthController
             return $challenge;
         }
         ApiLoginThrottle::succeeded($request, self::AUDIENCE, $this->throttleSubject($request));
+        \GP247\Shop\Privacy\CustomerActivity::signedIn($user);
 
         return response()->json(['data' => $this->withGuestCartMerged(ApiSessions::open($user, self::AUDIENCE, $request, $opts), $user, $request)]);
     }
@@ -83,6 +84,7 @@ class MemberController extends MemberAuthController
             return $result;
         }
         [$user, $opts] = $result;
+        \GP247\Shop\Privacy\CustomerActivity::signedIn($user);
 
         return response()->json(['data' => $this->withGuestCartMerged(ApiSessions::open($user, self::AUDIENCE, $request, $opts), $user, $request)]);
     }

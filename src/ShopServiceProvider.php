@@ -149,6 +149,9 @@ class ShopServiceProvider extends ServiceProvider
             // Where shop keeps customers' personal data and when they cannot be erased yet
             // (US-customer-privacy-declare-shop-data).
             \GP247\Shop\Privacy\ShopPersonalData::register();
+            // How long shop data is kept, and the sign-in that keeps an unused account (US-personal-data-retention-inactive-accounts).
+            \GP247\Shop\Privacy\ShopRetention::register();
+            \Illuminate\Support\Facades\Event::listen(\Illuminate\Auth\Events\Login::class, [\GP247\Shop\Privacy\CustomerActivity::class, 'onLogin']);
             // The erasure box polls its progress every second: not an operation worth a log row each.
             $logExcept = (string) config('gp247-config.admin.admin_log_livewire_except', \GP247\Core\AdminShell\Support\LivewireOperationLog::DEFAULT_EXCEPT);
             if (!in_array('tickErasure', array_map('trim', explode(',', $logExcept)), true)) {

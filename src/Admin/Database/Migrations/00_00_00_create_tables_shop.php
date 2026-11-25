@@ -443,6 +443,8 @@ return new class extends Migration
                 $table->text('content');
                 $table->timestamps();
                 $table->index(['identifier', 'instance']);
+                // WHY: carts past their retention period are deleted by this column (US-personal-data-retention-policies).
+                $table->index('updated_at');
                 $table->uuid('store_id')->default(1)->index();
             }
         );
@@ -477,6 +479,8 @@ return new class extends Migration
                 $table->tinyInteger('status')->default(1);
                 $table->tinyInteger('group')->default(1);
                 $table->timestamp('email_verified_at', $precision = 0)->nullable();
+                // WHY: finds accounts unused for the retention period (US-personal-data-retention-inactive-accounts).
+                $table->timestamp('last_login_at')->nullable();
                 $table->timestamps();
                 $table->unique(['email']);
             }

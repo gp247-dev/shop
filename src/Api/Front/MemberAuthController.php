@@ -49,6 +49,8 @@ class MemberAuthController extends RootFrontController
             return $refused;
         }
         ApiLoginThrottle::succeeded($request, 'customer', $this->throttleSubject($request));
+        // An app sign-in keeps an unused account like a website sign-in (US-personal-data-retention-inactive-accounts).
+        \GP247\Shop\Privacy\CustomerActivity::signedIn($user);
 
         $opts = $this->tokenOptions($user, $request);
         ApiTokenLifetime::purgeExpired($user);

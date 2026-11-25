@@ -32,6 +32,15 @@ class ShopPrivacyMailer implements PrivacyMailer
     }
 
     /** @inheritDoc */
+    public function inactiveAccount(string $email, string $requestId, \DateTimeInterface $runsAt): void
+    {
+        // WHY the same signed link as a scheduled erasure: it calls off this request, like signing in does.
+        $until = \Illuminate\Support\Carbon::instance($runsAt)->addDays(\GP247\Core\PersonalData\Application\Requests\PrivacySettings::overdueDays());
+        $url = gp247_mail_link_url(fn () => URL::temporarySignedRoute('customer.privacy_cancel_link', $until, ['requestId' => $requestId]));
+        $this->send($email, 'inactive', ['date' => $runsAt->format('Y-m-d H:i')], $url);
+    }
+
+    /** @inheritDoc */
     public function erased(string $email): void
     {
         $this->send($email, 'erased');
