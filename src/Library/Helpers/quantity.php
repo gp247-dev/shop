@@ -1,7 +1,6 @@
 <?php
 /**
  * File function process product quantity format (integer vs decimal)
- * @see aidlc-docs/design-artifacts/adrs/shop-admin_quantity-format-config.md (ADR-016)
  */
 
 if (!function_exists('gp247_qty_decimal_enabled') && !in_array('gp247_qty_decimal_enabled', config('gp247_functions_except', []))) {
