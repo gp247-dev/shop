@@ -71,6 +71,9 @@ final class ShopPersonalData
         if (method_exists(PersonalDataRegistry::class, 'customerResolver')) {
             PersonalDataRegistry::customerResolver(static fn (string $idOrEmail): ?array => self::findCustomer($idOrEmail));
         }
+        if (method_exists(PersonalDataRegistry::class, 'customersResolver')) {
+            PersonalDataRegistry::customersResolver(static fn (array $ids): array => self::findCustomers($ids));
+        }
     }
 
     /**
@@ -95,6 +98,25 @@ final class ShopPersonalData
             // WHY: rows found by this email join a customer's own request only when it is proven theirs.
             'verified' => $customer->email_verified_at !== null,
         ];
+    }
+
+    /**
+     * @param list<string> $ids
+     * @return array<string, array{id: string, email: string|null, name: string|null, store_id: string|null}> Id => customer (one query).
+     */
+    public static function findCustomers(array $ids): array
+    {
+        $out = [];
+        foreach (ShopCustomer::query()->whereIn('id', $ids)->get(['id', 'email', 'first_name', 'last_name', 'store_id']) as $customer) {
+            $out[(string) $customer->id] = [
+                'id' => (string) $customer->id,
+                'email' => $customer->email === null ? null : (string) $customer->email,
+                'name' => trim((string) $customer->first_name . ' ' . (string) $customer->last_name) ?: null,
+                'store_id' => $customer->store_id === null ? null : (string) $customer->store_id,
+            ];
+        }
+
+        return $out;
     }
 
     /**
