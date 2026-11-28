@@ -13,11 +13,11 @@ GP247 の EC パッケージ — S-Cart の土台となる販売機能
 
 `composer require gp247/shop`
 
-[![Tests](https://github.com/gp247net/shop/actions/workflows/tests.yml/badge.svg?branch=master)](https://github.com/gp247net/shop/actions/workflows/tests.yml)
+[![Tests](https://github.com/gp247-official/shop/actions/workflows/tests.yml/badge.svg?branch=master)](https://github.com/gp247-official/shop/actions/workflows/tests.yml)
 [![総ダウンロード数](https://poser.pugx.org/GP247/Shop/d/total.svg)](https://packagist.org/packages/GP247/Shop)
 [![最新の安定版](https://poser.pugx.org/GP247/Shop/v/stable.svg)](https://packagist.org/packages/GP247/Shop)
 [![ライセンス](https://poser.pugx.org/GP247/Shop/license.svg)](https://packagist.org/packages/GP247/Shop)
-[![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-blue)](https://deepwiki.com/gp247net/shop)
+[![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-blue)](https://deepwiki.com/gp247-official/shop)
 
 
 ## 概要
@@ -72,7 +72,7 @@ GP247/Shop は GP247 エコシステムの主要パッケージの 1 つで、GP
 
 ## インストール
 
-> 📘 **インストールの詳しいガイド** — インストール構成の選び方（S-Cart、GP247 CMS、core のみ）、コマンドラインのないホスティング、既存サイトへの front/shop 追加、トラブルシューティング：[GP247 と S-Cart のインストール](https://github.com/gp247net/gp247-docs/blob/main/install-upgrade/install_ja.md)。
+> 📘 **インストールの詳しいガイド** — インストール構成の選び方（S-Cart、GP247 CMS、core のみ）、コマンドラインのないホスティング、既存サイトへの front/shop 追加、トラブルシューティング：[GP247 と S-Cart のインストール](https://github.com/gp247-official/gp247-docs/blob/main/install-upgrade/install_ja.md)。
 
 ### 選択肢 1：GP247 CMS で新規インストール
 1. gp247/cms をインストールします（Laravel、GP247/Core、GP247/Front を含みます）
@@ -102,7 +102,7 @@ return [
 
 
 ### 選択肢 2：S-Cart のソースコードを使用する
-S-Cart には必要なコンポーネントがすべて含まれています。詳細は [S-Cart の GitHub リンク](https://github.com/gp247net/s-cart) をご覧ください。
+S-Cart には必要なコンポーネントがすべて含まれています。詳細は [S-Cart の GitHub リンク](https://github.com/gp247-official/s-cart) をご覧ください。
 
 1. パッケージをインストールします
 

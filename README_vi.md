@@ -13,11 +13,11 @@ Gói thương mại điện tử của GP247 — phần bán hàng mà S-Cart x�
 
 `composer require gp247/shop`
 
-[![Tests](https://github.com/gp247net/shop/actions/workflows/tests.yml/badge.svg?branch=master)](https://github.com/gp247net/shop/actions/workflows/tests.yml)
+[![Tests](https://github.com/gp247-official/shop/actions/workflows/tests.yml/badge.svg?branch=master)](https://github.com/gp247-official/shop/actions/workflows/tests.yml)
 [![Tổng số lượt tải](https://poser.pugx.org/GP247/Shop/d/total.svg)](https://packagist.org/packages/GP247/Shop)
 [![Phiên bản ổn định mới nhất](https://poser.pugx.org/GP247/Shop/v/stable.svg)](https://packagist.org/packages/GP247/Shop)
 [![Giấy phép](https://poser.pugx.org/GP247/Shop/license.svg)](https://packagist.org/packages/GP247/Shop)
-[![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-blue)](https://deepwiki.com/gp247net/shop)
+[![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-blue)](https://deepwiki.com/gp247-official/shop)
 
 
 ## Giới thiệu
@@ -72,7 +72,7 @@ GP247/Shop là một trong những gói chính của hệ sinh thái GP247, bi�
 
 ## Cài đặt
 
-> 📘 **Hướng dẫn cài đặt đầy đủ** — chọn bộ cài (S-Cart, GP247 CMS, chỉ core), hosting không có dòng lệnh, thêm front/shop vào site đang có, xử lý sự cố: [Cài đặt GP247 và S-Cart](https://github.com/gp247net/gp247-docs/blob/main/install-upgrade/install_vi.md).
+> 📘 **Hướng dẫn cài đặt đầy đủ** — chọn bộ cài (S-Cart, GP247 CMS, chỉ core), hosting không có dòng lệnh, thêm front/shop vào site đang có, xử lý sự cố: [Cài đặt GP247 và S-Cart](https://github.com/gp247-official/gp247-docs/blob/main/install-upgrade/install_vi.md).
 
 ### Lựa chọn 1: Cài đặt mới với GP247 CMS
 1. Cài đặt gp247/cms (Đã bao gồm Laravel, GP247/Core, GP247/Front)
@@ -102,7 +102,7 @@ return [
 
 
 ### Lựa chọn 2: Sử dụng mã nguồn S-Cart
-S-Cart đã bao gồm đầy đủ các thành phần cần thiết. Bạn có thể xem đầy đủ tại [link GitHub của S-Cart](https://github.com/gp247net/s-cart).
+S-Cart đã bao gồm đầy đủ các thành phần cần thiết. Bạn có thể xem đầy đủ tại [link GitHub của S-Cart](https://github.com/gp247-official/s-cart).
 
 1. Cài đặt gói
 

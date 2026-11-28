@@ -13,11 +13,11 @@ E-commerce package of GP247 — the selling layer that S-Cart is built on
 
 `composer require gp247/shop`
 
-[![Tests](https://github.com/gp247net/shop/actions/workflows/tests.yml/badge.svg?branch=master)](https://github.com/gp247net/shop/actions/workflows/tests.yml)
+[![Tests](https://github.com/gp247-official/shop/actions/workflows/tests.yml/badge.svg?branch=master)](https://github.com/gp247-official/shop/actions/workflows/tests.yml)
 [![Total Downloads](https://poser.pugx.org/GP247/Shop/d/total.svg)](https://packagist.org/packages/GP247/Shop)
 [![Latest Stable Version](https://poser.pugx.org/GP247/Shop/v/stable.svg)](https://packagist.org/packages/GP247/Shop)
 [![License](https://poser.pugx.org/GP247/Shop/license.svg)](https://packagist.org/packages/GP247/Shop)
-[![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-blue)](https://deepwiki.com/gp247net/shop)
+[![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-blue)](https://deepwiki.com/gp247-official/shop)
 
 ## Introduction
 
@@ -71,7 +71,7 @@ GP247/Shop is a core package in the GP247 ecosystem that turns your GP247 site i
 
 ## Installation
 
-> 📘 **Full installation guide** — choosing a package set (S-Cart, GP247 CMS, core only), hosting without a command line, adding front/shop to an existing site, troubleshooting: [Installing GP247 and S-Cart](https://github.com/gp247net/gp247-docs/blob/main/install-upgrade/install.md).
+> 📘 **Full installation guide** — choosing a package set (S-Cart, GP247 CMS, core only), hosting without a command line, adding front/shop to an existing site, troubleshooting: [Installing GP247 and S-Cart](https://github.com/gp247-official/gp247-docs/blob/main/install-upgrade/install.md).
 
 ### Option 1: New installation with GP247 CMS
 1. Install gp247/cms (includes Laravel, GP247/Core, GP247/Front)
@@ -97,7 +97,7 @@ return [
 >`php artisan gp247:shop-sample`
 
 ### Option 2: Use S-Cart source code
-S-Cart already includes all the necessary components. See the full details at the [GitHub repository](https://github.com/gp247net/s-cart).
+S-Cart already includes all the necessary components. See the full details at the [GitHub repository](https://github.com/gp247-official/s-cart).
 
 1. Create the project
 
